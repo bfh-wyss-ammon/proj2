@@ -95,17 +95,34 @@ public class Paillier {
 		BigInteger m1 = new BigInteger("200");
 		BigInteger m2 = new BigInteger("60");
 
+		long time = System.currentTimeMillis();
 		BigInteger c1 = paillier.encryption(m1);
 		BigInteger c2 = paillier.encryption(m2);
+		System.out.println("Time to encrypt two numbers in ms: " + (System.currentTimeMillis()-time)   );
+
 
 		System.out.println("Ciphertext c1: " + c1.intValue());
 		System.out.println("Ciphertext c2: " + c2.intValue());
 
-		System.out.println("Decrypted c1: " + paillier.decryption(c1).intValue());
-		System.out.println("Decrypted c2: " + paillier.decryption(c2).intValue());
+		time = System.currentTimeMillis();
+		BigInteger dec1 =paillier.decryption(c1);
+		BigInteger dec2 =paillier.decryption(c2);
+		System.out.println("Time to decrypt two numbers in ms: " + (System.currentTimeMillis()-time)   );
+		
+		
+		System.out.println("Decrypted c1: " + dec1.intValue());
+		System.out.println("Decrypted c2: " + dec2.intValue());
 
+		
+		
 		System.out.println("original sum: " + m1.add(m2).intValue());
-		System.out.println("decrypted sum: " + paillier.decryption(paillier.homomorphicAdd(c1,c2)).intValue());
+		
+		time = System.currentTimeMillis();
+		BigInteger res =paillier.homomorphicAdd(c1,c2);
+		System.out.println("Time to homo-add two numbers in ms: " + (System.currentTimeMillis()-time)   );
+
+		
+		System.out.println("decrypted sum: " + paillier.decryption(res).intValue() );
 
 	}
 }
