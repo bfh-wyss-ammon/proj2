@@ -10,7 +10,7 @@ private int modulus;
 
 private BigInteger p;
 private BigInteger q;
-private Random rand = new Random();
+private SecureRandom rand = new SecureRandom();
 private BigInteger lambda;
 public BigInteger n;
 public BigInteger nsquared;
