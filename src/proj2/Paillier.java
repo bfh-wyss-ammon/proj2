@@ -14,21 +14,21 @@ public class Paillier {
 	// sets how many rounds of the miller rabin test are run
 	public final int prime_certainty = 256;
 
+
 	
-	//the generator (is equal to n+1)
-	private BigInteger g;
-	
-	//the public key
+	//the public key and the generator (is equal to n+1)
 	private BigInteger n;
 	private BigInteger nsquared;
-	private BigInteger p;
-	private BigInteger q;
+	private BigInteger g;
+
 	
 	//the random generator used for cryptographic operations
 	private SecureRandom rand;
 	
 	//the private key
 	private BigInteger lambda;
+	private BigInteger p;
+	private BigInteger q;
 
 	/**
 	 * create a new instance of this cryptosystem with new keys
@@ -44,6 +44,22 @@ public class Paillier {
 
 	}
 
+	/**
+	 * @param n the public key
+	 * @param p part of the private key
+	 * @param q part of the private key
+	 * @param lambda part of the private key
+	 * create a new instance of this cryptosystem with known keys
+	 */
+	public Paillier(BigInteger n, BigInteger p, BigInteger q, BigInteger lambda) {
+		 rand= new SecureRandom();
+		 this.n = n;
+		 this.g = n.add(BigInteger.ONE);
+		 this.nsquared = this.n.multiply(this.n);
+		 this.p =p;
+		 this.q =q;
+		 this.lambda = lambda;
+	}
 	public void keyGen() throws Exception {
 		
 		//find the public key
@@ -66,8 +82,13 @@ public class Paillier {
 	 * @return returns the encrypted ciphertext of m
 	 */
 	public BigInteger encryption(BigInteger m) {
-		BigInteger r = new BigInteger(this.modulus, this.rand);
-		return this.g.modPow(m, this.nsquared).multiply(r.modPow(this.n, this.nsquared)).mod(this.nsquared);
+		if(this.nsquared != null){
+			BigInteger r = new BigInteger(this.modulus, this.rand);
+			return this.g.modPow(m, this.nsquared).multiply(r.modPow(this.n, this.nsquared)).mod(this.nsquared);
+		}else{
+			return null;
+		}
+		
 
 	}
 
@@ -76,8 +97,13 @@ public class Paillier {
 	 * @return returns the decrypted cleartext of c
 	 */
 	public BigInteger decryption(BigInteger c) {
-		BigInteger u = g.modPow(lambda, nsquared).subtract(BigInteger.ONE).divide(n).modInverse(n);
-		return c.modPow(lambda, nsquared).subtract(BigInteger.ONE).divide(n).multiply(u).mod(n);
+		if(this.n != null && this.lambda !=null && this.nsquared != null && this.g != null){
+			BigInteger u = this.g.modPow(this.lambda, this.nsquared).subtract(BigInteger.ONE).divide(this.n).modInverse(this.n);
+			return c.modPow(this.lambda, this.nsquared).subtract(BigInteger.ONE).divide(this.n).multiply(u).mod(this.n);
+		}else{
+			return null;
+		}
+
 	}
 	
 	/**
