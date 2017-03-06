@@ -46,16 +46,32 @@ public class Paillier {
 	 * @param q part of the private key
 	 * @param lambda part of the private key 
 	 * create a new instance of this cryptosystem with known keys
+	 * public key must be a hex string with 2048 bits
+	 * private key must be a hex string p and hex string q separated with _
+	 * p and q are each 1024 bit
 	 */
-	public Paillier(BigInteger n, BigInteger p, BigInteger q) {
+	public Paillier(String publickey_n, String privatekey_p_q) {
+		
+		if(privatekey_p_q != null){
+			
+			String pq = privatekey_p_q;
+			String[] splitted = pq.split("_");
+			String pstring = splitted[0];
+			String qstring = splitted[1];
+			BigInteger p = new BigInteger(pstring, 16);
+			BigInteger q = new BigInteger(qstring,16);
+			this.p = p;
+			this.q = q;
+			this.lambda = this.p.subtract(BigInteger.ONE).multiply(this.q.subtract(BigInteger.ONE)).divide(this.p.subtract(BigInteger.ONE).gcd(this.q.subtract(BigInteger.ONE)));
+			this.preCalcDecrypt = this.g.modPow(this.lambda, this.nsquared).subtract(BigInteger.ONE).divide(this.n).modInverse(this.n);
+		}
+
 		rand = new SecureRandom();
+		BigInteger n = new BigInteger(publickey_n, 16);
 		this.n = n;
 		this.g = n.add(BigInteger.ONE);
 		this.nsquared = this.n.multiply(this.n);
-		this.p = p;
-		this.q = q;
-		this.lambda = this.p.subtract(BigInteger.ONE).multiply(this.q.subtract(BigInteger.ONE)).divide(this.p.subtract(BigInteger.ONE).gcd(this.q.subtract(BigInteger.ONE)));
-		this.preCalcDecrypt = this.g.modPow(this.lambda, this.nsquared).subtract(BigInteger.ONE).divide(this.n).modInverse(this.n);
+		
 	}
 
 	public boolean keyGen() {
@@ -76,6 +92,7 @@ public class Paillier {
 		if(!relPrime(check,n)) return false;
 		return true;
 	}
+	
 	
 	
 	/**
@@ -118,6 +135,14 @@ public class Paillier {
 		return c1.multiply(c2).mod(this.nsquared);
 	}
 
+	public String getPrivateKey(){
+		if(p==null || q==null)return null;
+		return p.toString(16) + "_" + q.toString(16);
+	}
+	
+	public String getPublicKey(){
+		return n.toString(16);
+	}
 	private boolean isLess(BigInteger a, BigInteger b) {
 		return a.compareTo(b) == -1;
 
@@ -156,6 +181,7 @@ public class Paillier {
 		System.out.println("Time to homo-add two numbers in ms: " + (System.currentTimeMillis() - time));
 
 		System.out.println("decrypted sum: " + paillier.decryption(res).intValue());
+		System.out.println(paillier.getPrivateKey());
 
 	}
 }
