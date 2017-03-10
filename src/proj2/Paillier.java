@@ -74,6 +74,7 @@ public class Paillier {
 		
 	}
 
+	
 	public boolean keyGen() {
 
 		// find the public key
@@ -81,7 +82,7 @@ public class Paillier {
 		q = new BigInteger(this.modulus / 2, this.prime_certainty, this.rand);
 		this.n = this.p.multiply(this.q);
 		this.nsquared = this.n.multiply(this.n);
-		this.g = this.n.add(BigInteger.ONE);
+		this.g = new BigInteger("2");
 
 		// find and check the secret key
 		this.lambda = this.p.subtract(BigInteger.ONE).multiply(this.q.subtract(BigInteger.ONE)).divide(this.p.subtract(BigInteger.ONE).gcd(this.q.subtract(BigInteger.ONE)));
