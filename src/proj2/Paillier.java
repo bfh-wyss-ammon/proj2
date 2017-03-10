@@ -169,6 +169,8 @@ public class Paillier {
 		time = System.currentTimeMillis();
 		BigInteger dec1 = paillier.decryption(c1);
 		BigInteger dec2 = paillier.decryption(c2);
+		
+		System.out.println(dec1);
 		System.out.println("Time to decrypt two numbers in ms: " + (System.currentTimeMillis() - time));
 
 		System.out.println("Decrypted c1: " + dec1.intValue());
