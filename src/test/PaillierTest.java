@@ -1,11 +1,11 @@
-package test;
+package src.test;
 
 import static org.junit.Assert.*;
 
 import java.math.BigInteger;
 
 import org.junit.Test;
-import proj2.*;
+import src.proj2.*;
 
 public class PaillierTest {
 	

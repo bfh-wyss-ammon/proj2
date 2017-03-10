@@ -1,4 +1,4 @@
-package proj2;
+package src.proj2;
 
 import java.math.*;
 import java.security.SecureRandom;
