@@ -2,37 +2,58 @@ package src.proj2;
 
 import java.math.*;
 import java.security.*;
+import java.util.ArrayList;
 
 
 public class GroupSign {
 	
 	
 	// sets the size of the key material
-	public final int modulus = 2048;
+	public final int modulus = 1024;
 
 	// sets how many rounds of the miller rabin test are run
-	public final int prime_certainty = 256;
+	public final int prime_certainty = 50;
 	
 	
-	// the public key and the generator (is equal to n+1)
+	public final int number_of_groupmembers = 100;
+	
+	
+	// the group public key and the generator (is equal to n+1)
 		private BigInteger n;
 		private BigInteger nsquared;
 		private BigInteger generator;
 		private BigInteger a;
 		private BigInteger g;
 		private BigInteger h;
+		private BigInteger bigQ;
+		private BigInteger bigP;
+		private BigInteger bigF;
+		private BigInteger bigG;
+		private BigInteger bigH;
 
 		// the random generator used for cryptographic operations
 		private SecureRandom rand;
-
+		
+		
+		//the group members private key
+		private BigInteger[] x = new BigInteger[number_of_groupmembers];
+		private BigInteger[] r = new BigInteger[number_of_groupmembers];
+		private ArrayList<BigInteger> e = new ArrayList<BigInteger>();
+		private BigInteger[] y = new BigInteger[number_of_groupmembers];
+		
+		
+		//the group manager private key
+		private BigInteger Xg;
+		private BigInteger Xh;
+		private BigInteger vk;
+		
 		// the private key
 		private BigInteger lambda;
 		private BigInteger p;
 		private BigInteger q;
 		
 		
-		private BigInteger bigQ;
-		private BigInteger bigP;
+
 	
 	
 	public GroupSign(){
@@ -52,9 +73,38 @@ public class GroupSign {
 	    this.g = randomElementOfQRn();
 	    this.h = randomElementOfQRn();
 	    
-		//this.bigQ = this.p.subtract(BigInteger.ONE).multiply(this.q.subtract(BigInteger.ONE)).divide(this.p.subtract(BigInteger.ONE).gcd(this.q.subtract(BigInteger.ONE)));
+	    this.bigQ = new BigInteger(this.modulus-1,this.prime_certainty,this.rand);
+	    this.bigP = this.bigQ.multiply(new BigInteger("2")).add(BigInteger.ONE);
+	    
+	    this.bigF = bigP.subtract(BigInteger.ONE).modPow((bigP.subtract(BigInteger.ONE)).divide(bigQ), bigP);
+	    
+	    this.Xg = new BigInteger(this.modulus-1,this.rand);
+	    this.Xh = new BigInteger(this.modulus-1,this.rand);
+	    
+	    this.bigG = bigF.modPow(Xg, this.bigP);
+	    this.bigH = bigF.modPow(Xh, this.bigP);
+	    
+	    
+	    for(int i=0;i<this.number_of_groupmembers;i++){
+	    	this.x[i] = new BigInteger(this.modulus-1,this.rand);
+	    	this.r[i] = new BigInteger(this.modulus, this.rand);
+	    	
+	    }
+	    
+	    BigInteger two = new BigInteger("2");
+	    while(this.e.size() < this.number_of_groupmembers){
+		    BigInteger bigE = new BigInteger(this.modulus,this.prime_certainty,this.rand);
+		    BigInteger el = bigE.subtract(two.pow(this.modulus));
+		    if(!this.e.contains(el)) {
+		    	this.e.add(el);
+		    	System.out.println(el.toString(16));
+		    }
+	    	
+	    }
 
- 
+	    
+	    
+	    
 	}
 	
 	private BigInteger randomElementOfQRn(){
