@@ -40,12 +40,13 @@ public class GroupSign {
 		private BigInteger[] r = new BigInteger[number_of_groupmembers];
 		private ArrayList<BigInteger> e = new ArrayList<BigInteger>();
 		private BigInteger[] y = new BigInteger[number_of_groupmembers];
+		private BigInteger[] bigE = new BigInteger[number_of_groupmembers];
 		
 		
 		//the group manager private key
 		private BigInteger Xg;
 		private BigInteger Xh;
-		private BigInteger vk;
+
 		
 		// the private key
 		private BigInteger lambda;
@@ -91,17 +92,27 @@ public class GroupSign {
 	    	
 	    }
 	    
-	    BigInteger two = new BigInteger("2");
+	    BigInteger two_exp = new BigInteger("2").pow(this.modulus);
 	    while(this.e.size() < this.number_of_groupmembers){
 		    BigInteger bigE = new BigInteger(this.modulus,this.prime_certainty,this.rand);
-		    BigInteger el = bigE.subtract(two.pow(this.modulus));
+		    BigInteger el = bigE.subtract(two_exp);
 		    if(!this.e.contains(el)) {
 		    	this.e.add(el);
-		    	System.out.println(el.toString(16));
+		    	this.bigE[this.e.size()-1]=bigE;
 		    }
-	    	
 	    }
+	    
+	    
+	    //still something wrong here
+	    for(int i = 0; i<number_of_groupmembers;i++){
+	    	BigInteger res = this.a.multiply(g.modPow(x[i],this.n)).multiply(h.modPow(r[i], this.n)).mod(this.n);
+	    	this.y[i] = res.modPow(bigE[i],this.n).modInverse(this.n);
 
+	    	if(y[i].modPow(bigE[i], this.n).equals(res)){
+	    		System.out.println("yeah");
+	    	}
+	    }
+	    																					
 	    
 	    
 	    
