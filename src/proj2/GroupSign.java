@@ -39,6 +39,7 @@ public class GroupSign {
 
 		// the random generator used for cryptographic operations
 		private SecureRandom rand;
+		private MessageDigest md;
 		
 		
 		//the group members private key
@@ -52,7 +53,7 @@ public class GroupSign {
 		//the group manager private key
 		private BigInteger Xg;
 		private BigInteger Xh;
-		private BigInteger[] bigY;
+		private BigInteger[] bigY = new BigInteger[number_of_groupmembers];
 
 		
 		// the private key
@@ -66,6 +67,12 @@ public class GroupSign {
 	
 	public GroupSign(){
 		rand = new SecureRandom();
+		try {
+			md = MessageDigest.getInstance("SHA-256");
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		keyGen();
 		
 	}
@@ -124,24 +131,44 @@ public class GroupSign {
 	    		this.y[i] = new BigInteger(this.modulus,this.prime_certainty,this.rand);
 	    	}
 	    }
-	    																					
+	    
+	    for(int i = 0; i<number_of_groupmembers;i++){
+	    	this.bigY[i]=bigG.modPow(this.x[i], this.bigP);
+	    }
+	    
+	    
+	    
+	    //now that we have all the variables, we can construct the key objects
+	    this.vk = new GroupSignPublicKey(this.n, this.a, this.g, this.h, this.bigQ, this.bigP, this.bigF, this.bigG, this.bigH);
+	    this.gsmk = new GroupSignManagerKey(this.vk, this.Xg, this.bigY);
+	    for(int i = 0; i<number_of_groupmembers;i++){
+	    	this.sk[i]= new GroupSignMemberKey(this.vk, this.x[i], this.y[i], this.e.get(i), this.r[i]);
+	    }
+	    
 	    
 	}
 	
-	private GroupSignSignature sign(BigInteger m){
+	private GroupSignSignature sign(byte[] message, GroupSignMemberKey sk){
+		
+		//hashing
+		md.update(message,0, message.length);
+		BigInteger c = new BigInteger(1,md.digest());
 		
 		//all the variables we need
 		BigInteger r = new BigInteger(this.modulus/2,rand);
 		BigInteger bigR = new BigInteger(this.modulus-1,this.rand);
-		BigInteger u;
-		BigInteger bigU1;
-		BigInteger bigU2;
-		BigInteger bigU3;
-		BigInteger rx;
-		BigInteger rr;
-		BigInteger re;
-		BigInteger bigRr;
-		BigInteger v;
+		BigInteger u = sk.vk().h().modPow(r, sk.vk().n());
+		BigInteger bigU1 = sk.vk().bigF().modPow(bigR, sk.vk().bigP());
+		BigInteger bigU2 = sk.vk().bigG().modPow(bigR.add(sk.x()), sk.vk().bigP());
+		BigInteger bigU3 = sk.vk().bigH().modPow(bigR.add(sk.e()), sk.vk().bigP());
+		
+		//lS is unknown what could it be?
+		Integer lS = 1;
+		BigInteger rx = new BigInteger(this.modulus-1 + 256 + lS ,this.rand);
+		BigInteger rr = new BigInteger(this.modulus/2 + 256 + lS, this.rand);
+		BigInteger re = new BigInteger(sk.e().bitLength() + 256 + lS,this.rand);
+		BigInteger bigRr = new BigInteger(this.modulus-1,this.rand);
+		BigInteger v = u.modPow(re, sk.vk().n()).multiply(sk.vk().g().modPow(rx.negate(),sk.vk().n())).multiply(sk.vk().h().modPow(rr, sk.vk().n())).mod(sk.vk().n());
 		BigInteger bigV1;
 		BigInteger bigV2;
 		BigInteger bigV3;
@@ -149,7 +176,7 @@ public class GroupSign {
 		BigInteger zr;
 		BigInteger ze;
 		BigInteger zbigR;
-		String c;
+
 
 		
 		
@@ -158,7 +185,7 @@ public class GroupSign {
 		
 		
 		//return the new signature
-		return new GroupSignSignature(u,bigU1,bigU2,bigU3, zx,zr,ze,zbigR, c, m);
+		return new GroupSignSignature(u,bigU1,bigU2,bigU3, zx,zr,ze,zbigR, c, message);
 		
 		
 	}

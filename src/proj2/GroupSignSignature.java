@@ -12,14 +12,14 @@ public class GroupSignSignature {
 	private final BigInteger zr;
 	private final BigInteger ze;
 	private final BigInteger zbigR;
-	private final String c;
-	private final BigInteger m;
+	private final BigInteger c;
+	private final byte[] m;
 	
 
 
 
 	public GroupSignSignature(BigInteger u, BigInteger bigU1, BigInteger bigU2, BigInteger bigU3, BigInteger zx, BigInteger zr,
-			BigInteger ze, BigInteger zbigR, String c, BigInteger m) {
+			BigInteger ze, BigInteger zbigR, BigInteger c, byte[] m) {
 		this.u = u;
 		this.bigU1 = bigU1;
 		this.bigU2 = bigU2;
@@ -57,10 +57,10 @@ public class GroupSignSignature {
 	public BigInteger zbigR(){
 		return zbigR;
 	}
-	public String c(){
+	public BigInteger c(){
 		return c;
 	}
-	public BigInteger m(){
+	public byte[] m(){
 		return m;
 	}
 	
