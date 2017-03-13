@@ -18,6 +18,12 @@ public class GroupSign {
 	public final int number_of_groupmembers = 100;
 	
 	
+	//store the key once they are generated
+	private GroupSignPublicKey vk;
+	private GroupSignManagerKey gsmk;
+	private GroupSignMemberKey[] sk;
+	
+	
 	// the group public key and the generator (is equal to n+1)
 		private BigInteger n;
 		private BigInteger nsquared;
@@ -46,6 +52,7 @@ public class GroupSign {
 		//the group manager private key
 		private BigInteger Xg;
 		private BigInteger Xh;
+		private BigInteger[] bigY;
 
 		
 		// the private key
@@ -92,30 +99,68 @@ public class GroupSign {
 	    	
 	    }
 	    
-	    BigInteger two_exp = new BigInteger("2").pow(this.modulus);
+	    BigInteger two = new BigInteger("2");
 	    while(this.e.size() < this.number_of_groupmembers){
 		    BigInteger bigE = new BigInteger(this.modulus,this.prime_certainty,this.rand);
-		    BigInteger el = bigE.subtract(two_exp);
+		    
+		    BigInteger el = bigE.subtract(two.pow(bigE.bitCount()));
 		    if(!this.e.contains(el)) {
 		    	this.e.add(el);
+		    	//System.out.println(el.toString(16));
+		    	//System.out.println("" + el.bitLength());
 		    	this.bigE[this.e.size()-1]=bigE;
 		    }
 	    }
 	    
 	    
-	    //still something wrong here
+	    //y[i] is the one we are looking for
+	    //there must be a faster way to do this... (current brute force)
+	    //y[i]=res[i]^E[i] mod n 
 	    for(int i = 0; i<number_of_groupmembers;i++){
 	    	BigInteger res = this.a.multiply(g.modPow(x[i],this.n)).multiply(h.modPow(r[i], this.n)).mod(this.n);
-	    	this.y[i] = res.modPow(bigE[i],this.n).modInverse(this.n);
 
-	    	if(y[i].modPow(bigE[i], this.n).equals(res)){
-	    		System.out.println("yeah");
+	    	this.y[i] = new BigInteger(this.modulus,this.rand);
+	    	if(   !y[i].modPow(bigE[i], this.n).equals(res)   ){
+	    		this.y[i] = new BigInteger(this.modulus,this.prime_certainty,this.rand);
 	    	}
 	    }
 	    																					
 	    
-	    
-	    
+	}
+	
+	private GroupSignSignature sign(BigInteger m){
+		
+		//all the variables we need
+		BigInteger r = new BigInteger(this.modulus/2,rand);
+		BigInteger bigR = new BigInteger(this.modulus-1,this.rand);
+		BigInteger u;
+		BigInteger bigU1;
+		BigInteger bigU2;
+		BigInteger bigU3;
+		BigInteger rx;
+		BigInteger rr;
+		BigInteger re;
+		BigInteger bigRr;
+		BigInteger v;
+		BigInteger bigV1;
+		BigInteger bigV2;
+		BigInteger bigV3;
+		BigInteger zx;
+		BigInteger zr;
+		BigInteger ze;
+		BigInteger zbigR;
+		String c;
+
+		
+		
+		
+		
+		
+		
+		//return the new signature
+		return new GroupSignSignature(u,bigU1,bigU2,bigU3, zx,zr,ze,zbigR, c, m);
+		
+		
 	}
 	
 	private BigInteger randomElementOfQRn(){
