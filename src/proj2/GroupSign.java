@@ -1,5 +1,12 @@
 package src.proj2;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.math.*;
 import java.security.*;
 import java.util.ArrayList;
@@ -21,7 +28,7 @@ public class GroupSign {
 	//store the key once they are generated
 	private GroupSignPublicKey vk;
 	private GroupSignManagerKey gsmk;
-	private GroupSignMemberKey[] sk;
+	private GroupSignMemberKey[] sk = new GroupSignMemberKey[number_of_groupmembers];
 	
 	
 	// the group public key and the generator (is equal to n+1)
@@ -54,14 +61,6 @@ public class GroupSign {
 		private BigInteger Xg;
 		private BigInteger Xh;
 		private BigInteger[] bigY = new BigInteger[number_of_groupmembers];
-
-		
-		// the private key
-		private BigInteger lambda;
-		private BigInteger p;
-		private BigInteger q;
-		
-		
 
 	
 	
@@ -110,7 +109,7 @@ public class GroupSign {
 	    while(this.e.size() < this.number_of_groupmembers){
 		    BigInteger bigE = new BigInteger(this.modulus,this.prime_certainty,this.rand);
 		    
-		    BigInteger el = bigE.subtract(two.pow(bigE.bitCount()));
+		    BigInteger el = bigE.subtract(two.pow(bigE.bitLength()));
 		    if(!this.e.contains(el)) {
 		    	this.e.add(el);
 		    	//System.out.println(el.toString(16));
@@ -118,7 +117,7 @@ public class GroupSign {
 		    	this.bigE[this.e.size()-1]=bigE;
 		    }
 	    }
-	    
+
 	    
 	    //y[i] is the one we are looking for
 	    //there must be a faster way to do this... (current brute force)
@@ -142,17 +141,13 @@ public class GroupSign {
 	    this.vk = new GroupSignPublicKey(this.n, this.a, this.g, this.h, this.bigQ, this.bigP, this.bigF, this.bigG, this.bigH);
 	    this.gsmk = new GroupSignManagerKey(this.vk, this.Xg, this.bigY);
 	    for(int i = 0; i<number_of_groupmembers;i++){
-	    	this.sk[i]= new GroupSignMemberKey(this.vk, this.x[i], this.y[i], this.e.get(i), this.r[i]);
+	    	this.sk[i]= new GroupSignMemberKey(this.vk, this.x[i], this.y[i], this.e.get(i), this.r[i],this.bigE[i]);
 	    }
 	    
 	    
 	}
 	
-	private GroupSignSignature sign(byte[] message, GroupSignMemberKey sk){
-		
-		//hashing
-		md.update(message,0, message.length);
-		BigInteger c = new BigInteger(1,md.digest());
+	public GroupSignSignature sign(byte[] message, GroupSignMemberKey sk){
 		
 		//all the variables we need
 		BigInteger r = new BigInteger(this.modulus/2,rand);
@@ -163,31 +158,100 @@ public class GroupSign {
 		BigInteger bigU3 = sk.vk().bigH().modPow(bigR.add(sk.e()), sk.vk().bigP());
 		
 		//lS is unknown what could it be?
+		//this is wrong, the integers will possibly be to short...
 		Integer lS = 1;
 		BigInteger rx = new BigInteger(this.modulus-1 + 256 + lS ,this.rand);
 		BigInteger rr = new BigInteger(this.modulus/2 + 256 + lS, this.rand);
 		BigInteger re = new BigInteger(sk.e().bitLength() + 256 + lS,this.rand);
 		BigInteger bigRr = new BigInteger(this.modulus-1,this.rand);
 		BigInteger v = u.modPow(re, sk.vk().n()).multiply(sk.vk().g().modPow(rx.negate(),sk.vk().n())).multiply(sk.vk().h().modPow(rr, sk.vk().n())).mod(sk.vk().n());
-		BigInteger bigV1;
-		BigInteger bigV2;
-		BigInteger bigV3;
-		BigInteger zx;
-		BigInteger zr;
-		BigInteger ze;
-		BigInteger zbigR;
+		BigInteger bigV1 = sk.vk().bigF().modPow(bigRr, sk.vk().bigP());
+		BigInteger bigV2 = sk.vk().bigG().modPow(bigRr.add(rx), sk.vk().bigP());
+		BigInteger bigV3 = sk.vk().bigH().modPow(bigRr.add(re), sk.vk().bigP());
+		
+		//generate hashing challenge
+		ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+		
+		try {
+			outputStream.write(convertToBytes(vk));
+			outputStream.write(u.toByteArray());
+			outputStream.write(v.toByteArray());
+			outputStream.write(bigU1.toByteArray());
+			outputStream.write(bigU2.toByteArray());
+			outputStream.write(bigU3.toByteArray());
+			outputStream.write(bigV1.toByteArray());
+			outputStream.write(bigV2.toByteArray());
+			outputStream.write(bigV3.toByteArray());
+			outputStream.write( message );
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
+		byte toBeHashedValue[] = outputStream.toByteArray( );
+		md.update(toBeHashedValue,0, message.length);
+		BigInteger c = new BigInteger(1,md.digest());
+		
+		BigInteger zx = rx.add(c.multiply(sk.x()));
+		
+		BigInteger res = sk.r().negate().subtract(r.multiply(sk.bigE()));
+		BigInteger zr = rr.add(res);
+		
+		res = c.multiply(sk.e());
+		BigInteger ze = re.add(res);
+		
+		BigInteger zbigR = bigRr.add(c.multiply(bigR)).mod(vk.bigQ());
 
-		
-		
-		
-		
-		
-		
 		//return the new signature
 		return new GroupSignSignature(u,bigU1,bigU2,bigU3, zx,zr,ze,zbigR, c, message);
+				
+	}
+	
+	
+	public boolean verify(GroupSignPublicKey vk, byte[] message, GroupSignSignature sigma){
+		boolean isValid = false;
+		int lS = 1;
+		
+	//need to do some more checking of ze and zx!!!
+		
+		//calculating v needs some serious calculation, so lets' split it
+		
+		//first get the fractions
+		BigInteger vPart1 = vk.a().modPow(sigma.c().negate(), vk.n());
+		BigInteger vPart2 = vk.g().modPow(sigma.zx().negate(), vk.n());
+		BigInteger vPart3 = vk.h().modPow(sigma.zr(), vk.n());
+		System.out.println(sigma.ze().intValue());
+		BigInteger vPart4 = sigma.c().multiply(new BigInteger("2").pow(this.modulus + sigma.ze().intValue()));
+		BigInteger vPart5 = sigma.u().modPow(vPart4, vk.n());
 		
 		
+		//then multiply all together (not vPart4 because it is the exponent of vPart5)
+		BigInteger v = vPart1.multiply(vPart2).mod(vk.n());
+		v = v.multiply(vPart3).mod(vk.n());		
+		v = v.multiply(vPart5).mod(vk.n());	
+		
+		BigInteger bigV1 = sigma.bigU1().modPow(sigma.c().negate(),vk.bigP()).multiply(vk.bigF().modPow(sigma.zbigR(), vk.bigP())).mod(vk.bigP());
+		BigInteger bigV2 =
+		BigInteger bigV3 =
+		
+		md.update(toBeHashedValue,0, message.length);
+		
+		return isValid;
+	}
+	
+	
+	private byte[] convertToBytes(Object object) throws IOException {
+	    try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	         ObjectOutput out = new ObjectOutputStream(bos)) {
+	        out.writeObject(object);
+	        return bos.toByteArray();
+	    } 
+	}
+	private Object convertFromBytes(byte[] bytes) throws IOException, ClassNotFoundException {
+	    try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+	         ObjectInput in = new ObjectInputStream(bis)) {
+	        return in.readObject();
+	    } 
 	}
 	
 	private BigInteger randomElementOfQRn(){

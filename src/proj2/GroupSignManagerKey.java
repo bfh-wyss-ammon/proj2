@@ -9,7 +9,6 @@ public class GroupSignManagerKey {
 	private final BigInteger[] bigY;
 	
 	
-	
 	public GroupSignManagerKey(GroupSignPublicKey vk, BigInteger xg, BigInteger[] bigY) {
 	
 		this.vk = vk;
