@@ -22,7 +22,7 @@ public class GroupSign {
 	public final int prime_certainty = 50;
 	
 	
-	public final int number_of_groupmembers = 100;
+	public final int number_of_groupmembers = 5;
 	
 	
 	//store the key once they are generated
@@ -90,7 +90,12 @@ public class GroupSign {
 	    this.bigQ = new BigInteger(this.modulus-1,this.prime_certainty,this.rand);
 	    this.bigP = this.bigQ.multiply(new BigInteger("2")).add(BigInteger.ONE);
 	    
-	    this.bigF = bigP.subtract(BigInteger.ONE).modPow((bigP.subtract(BigInteger.ONE)).divide(bigQ), bigP);
+	    this.bigF = new BigInteger(this.modulus-1,this.prime_certainty,this.rand);
+
+	    while(!relPrime(bigP,bigF)){
+		    this.bigF = new BigInteger(this.modulus-1,this.prime_certainty,this.rand);
+	    }
+	    //this.bigF = bigP.subtract(BigInteger.ONE).modPow((bigP.subtract(BigInteger.ONE)).divide(bigQ), bigP);
 	    
 	    this.Xg = new BigInteger(this.modulus-1,this.rand);
 	    this.Xh = new BigInteger(this.modulus-1,this.rand);
@@ -109,10 +114,10 @@ public class GroupSign {
 	    while(this.e.size() < this.number_of_groupmembers){
 		    BigInteger bigE = new BigInteger(this.modulus,this.prime_certainty,this.rand);
 		    
-		    BigInteger el = bigE.subtract(two.pow(bigE.bitLength()));
+		    BigInteger el = bigE.subtract(two.pow(bigE.bitCount()));
 		    if(!this.e.contains(el)) {
 		    	this.e.add(el);
-		    	//System.out.println(el.toString(16));
+		    	System.out.println( "e[i]: " + el.toString(16));
 		    	//System.out.println("" + el.bitLength());
 		    	this.bigE[this.e.size()-1]=bigE;
 		    }
@@ -169,6 +174,22 @@ public class GroupSign {
 		BigInteger bigV2 = sk.vk().bigG().modPow(bigRr.add(rx), sk.vk().bigP());
 		BigInteger bigV3 = sk.vk().bigH().modPow(bigRr.add(re), sk.vk().bigP());
 		
+		
+		System.out.println("values going into calculation of V1");
+		System.out.println("F: " + sk.vk().bigF().toString());
+		System.out.println("Rr: " + bigRr.toString());
+		System.out.println("P: " + sk.vk().bigP().toString());
+		System.out.println("V3: " + bigV3.toString());
+		
+		
+		System.out.println("original");
+		System.out.println("v: " + v.toString());
+		System.out.println("V1: " + bigV1.toString());
+		System.out.println("V2: " + bigV2.toString());
+		System.out.println("V3: " + bigV3.toString());
+		
+		
+		
 		//generate hashing challenge
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
 		
@@ -189,7 +210,7 @@ public class GroupSign {
 		}
 
 		byte toBeHashedValue[] = outputStream.toByteArray( );
-		md.update(toBeHashedValue,0, message.length);
+		md.update(toBeHashedValue,0, toBeHashedValue.length);
 		BigInteger c = new BigInteger(1,md.digest());
 		
 		BigInteger zx = rx.add(c.multiply(sk.x()));
@@ -220,8 +241,7 @@ public class GroupSign {
 		BigInteger vPart1 = vk.a().modPow(sigma.c().negate(), vk.n());
 		BigInteger vPart2 = vk.g().modPow(sigma.zx().negate(), vk.n());
 		BigInteger vPart3 = vk.h().modPow(sigma.zr(), vk.n());
-		System.out.println(sigma.ze().intValue());
-		BigInteger vPart4 = sigma.c().multiply(new BigInteger("2").pow(this.modulus + sigma.ze().intValue()));
+		BigInteger vPart4 = sigma.c().multiply(new BigInteger("2").pow(this.modulus)).add(sigma.ze());
 		BigInteger vPart5 = sigma.u().modPow(vPart4, vk.n());
 		
 		
@@ -231,10 +251,42 @@ public class GroupSign {
 		v = v.multiply(vPart5).mod(vk.n());	
 		
 		BigInteger bigV1 = sigma.bigU1().modPow(sigma.c().negate(),vk.bigP()).multiply(vk.bigF().modPow(sigma.zbigR(), vk.bigP())).mod(vk.bigP());
-		BigInteger bigV2 =
-		BigInteger bigV3 =
+		BigInteger bigV2 = sigma.bigU2().modPow(sigma.c().negate(), vk.bigP()).multiply(vk.bigG().modPow(sigma.zbigR().add(sigma.zx()), vk.bigP())).mod(vk.bigP());
+		BigInteger bigV3 = sigma.bigU3().modPow(sigma.c().negate(), vk.bigP()).multiply(vk.bigH().modPow(sigma.zbigR().add(sigma.ze()), vk.bigP())).mod(vk.bigP());
 		
-		md.update(toBeHashedValue,0, message.length);
+		
+		
+		System.out.println("verified calculations");
+		System.out.println("v: " + v.toString());
+		System.out.println("V1: " + bigV1.toString());
+		System.out.println("V2: " + bigV2.toString());
+		System.out.println("V3: " + bigV3.toString());
+		
+		//generate hashing challenge
+				ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+				
+				try {
+					outputStream.write(convertToBytes(vk));
+					outputStream.write(sigma.u().toByteArray());
+					outputStream.write(v.toByteArray());
+					outputStream.write(sigma.bigU1().toByteArray());
+					outputStream.write(sigma.bigU2().toByteArray());
+					outputStream.write(sigma.bigU3().toByteArray());
+					outputStream.write(bigV1.toByteArray());
+					outputStream.write(bigV2.toByteArray());
+					outputStream.write(bigV3.toByteArray());
+					outputStream.write( message );
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+				byte toBeHashedValue[] = outputStream.toByteArray( );
+				md.update(toBeHashedValue,0, toBeHashedValue.length);
+				BigInteger c = new BigInteger(1,md.digest());
+				System.out.println("calculated hash: " + c.toString(16));
+				System.out.println("signature hash: " + sigma.c().toString(16));
+				isValid = c.equals(sigma.c());
 		
 		return isValid;
 	}
@@ -273,11 +325,47 @@ public class GroupSign {
 		
 	}
 	
+	public GroupSignPublicKey vk(){
+		if(this.vk!=null) return vk;
+		return null;
+	}
+	
+	public GroupSignMemberKey sk(int memberId)
+	{
+		if (this.sk[memberId]!=null) return sk[memberId];
+		return null;
+	}
+	
+	public GroupSignManagerKey gsmk(){
+		if (this.gsmk!=null) return gsmk;
+		return null;
+	}
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 
 		GroupSign grpS = new GroupSign();
+		byte[] testmessage= new BigInteger("1990").toByteArray();
+		GroupSignMemberKey sk = grpS.sk(0);
+		GroupSignPublicKey vk = grpS.vk();
+		GroupSignSignature sigma_testmessage = grpS.sign(testmessage, sk);
+		
+		boolean valid = grpS.verify(vk, testmessage, sigma_testmessage);
+		if (valid) {
+			System.out.println("the signature verified correctly");
+		}else{
+			System.out.println("error");
+		}
+		
+		
+		//byte[] othermessage = new BigInteger("1965").toByteArray();
+		//valid = grpS.verify(vk, othermessage, sigma_testmessage);
+		//if (valid) {
+		//	System.out.println("error");
+		//}else{
+		//	System.out.println("the signature was rejected correctly");
+		//}
+			
 	}
 
 }

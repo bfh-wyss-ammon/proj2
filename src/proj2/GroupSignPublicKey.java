@@ -1,8 +1,9 @@
 package src.proj2;
 
+import java.io.Serializable;
 import java.math.BigInteger;
 
-public class GroupSignPublicKey {
+public class GroupSignPublicKey implements Serializable {
 	
 	private final BigInteger n;
 	private final BigInteger a;
