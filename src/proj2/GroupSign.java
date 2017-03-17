@@ -16,10 +16,22 @@ public class GroupSign {
 	
 	
 	// sets the size of the key material
-	public final int modulus = 1024;
+	
+	//this is aka l(n) and l(P)
+	public final int modulus = 2048;
+	
+	public final int lE = 504;
+	public final int lQ = 282;
+	
+	
+	//length of c
+	public final int lc = 160;
+	
+	//lengt of e and s
+	public final int le = 60;
 
 	// sets how many rounds of the miller rabin test are run
-	public final int prime_certainty = 50;
+	public final int prime_certainty = 10;
 	
 	
 	public final int number_of_groupmembers = 5;
@@ -67,7 +79,7 @@ public class GroupSign {
 	public GroupSign(){
 		rand = new SecureRandom();
 		try {
-			md = MessageDigest.getInstance("SHA-256");
+			md = MessageDigest.getInstance("SHA-1");
 		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -87,8 +99,17 @@ public class GroupSign {
 	    this.g = randomElementOfQRn();
 	    this.h = randomElementOfQRn();
 	    
-	    this.bigQ = new BigInteger(this.modulus-1,this.prime_certainty,this.rand);
-	    this.bigP = this.bigQ.multiply(new BigInteger("2")).add(BigInteger.ONE);
+	    this.bigQ = new BigInteger(this.lQ,this.prime_certainty,this.rand);
+	    BigInteger multiplicator = new BigInteger("2").pow(this.modulus - this.lQ);
+	    this.bigP = bigQ.multiply(multiplicator).add(BigInteger.ONE);
+	    while(true){
+		    if(bigP.bitLength() == this.modulus){
+		    	if (bigP.isProbablePrime(1) && bigP.isProbablePrime(this.prime_certainty) ) break;
+		    }
+	    	multiplicator = multiplicator.add(BigInteger.ONE);
+		    this.bigP = bigQ.multiply(multiplicator).add(BigInteger.ONE);
+
+	    }
 	    
 	    this.bigF = new BigInteger(this.modulus-1,this.prime_certainty,this.rand);
 
@@ -114,12 +135,12 @@ public class GroupSign {
 	    while(this.e.size() < this.number_of_groupmembers){
 		    BigInteger bigE = new BigInteger(this.modulus,this.prime_certainty,this.rand);
 		    
-		    BigInteger el = bigE.subtract(two.pow(bigE.bitCount()));
+		    BigInteger el = bigE.subtract(two.pow(bigE.bitLength()));
 		    if(!this.e.contains(el)) {
 		    	this.e.add(el);
 		    	System.out.println( "e[i]: " + el.toString(16));
-		    	//System.out.println("" + el.bitLength());
 		    	this.bigE[this.e.size()-1]=bigE;
+		    	System.out.println("" + bigE.bitCount());
 		    }
 	    }
 
@@ -176,17 +197,17 @@ public class GroupSign {
 		
 		
 		System.out.println("values going into calculation of V1");
-		System.out.println("F: " + sk.vk().bigF().toString());
-		System.out.println("Rr: " + bigRr.toString());
-		System.out.println("P: " + sk.vk().bigP().toString());
-		System.out.println("V3: " + bigV3.toString());
+		System.out.println("F: " + sk.vk().bigF().toString(16));
+		System.out.println("Rr: " + bigRr.toString(16));
+		System.out.println("P: " + sk.vk().bigP().toString(16));
+		System.out.println("V3: " + bigV3.toString(16));
 		
 		
 		System.out.println("original");
-		System.out.println("v: " + v.toString());
-		System.out.println("V1: " + bigV1.toString());
-		System.out.println("V2: " + bigV2.toString());
-		System.out.println("V3: " + bigV3.toString());
+		System.out.println("v: " + v.toString(16));
+		System.out.println("V1: " + bigV1.toString(16));
+		System.out.println("V2: " + bigV2.toString(16));
+		System.out.println("V3: " + bigV3.toString(16));
 		
 		
 		
@@ -257,10 +278,10 @@ public class GroupSign {
 		
 		
 		System.out.println("verified calculations");
-		System.out.println("v: " + v.toString());
-		System.out.println("V1: " + bigV1.toString());
-		System.out.println("V2: " + bigV2.toString());
-		System.out.println("V3: " + bigV3.toString());
+		System.out.println("v: " + v.toString(16));
+		System.out.println("V1: " + bigV1.toString(16));
+		System.out.println("V2: " + bigV2.toString(16));
+		System.out.println("V3: " + bigV3.toString(16));
 		
 		//generate hashing challenge
 				ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
@@ -315,7 +336,9 @@ public class GroupSign {
 			check = this.generator.modPow(a, this.nsquared).subtract(BigInteger.ONE).divide(this.n);
 			
 		}
+		
 		return a;
+		
 	}
 	
 	
