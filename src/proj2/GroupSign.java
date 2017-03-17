@@ -185,7 +185,7 @@ public class GroupSign {
 		//all the variables we need
 		BigInteger r = randVal(this.modulus/2);
 		BigInteger bigR = randValModP(this.lQ,this.bigQ);
-		BigInteger u = sk.vk().h().modPow(r, sk.vk().n());
+		BigInteger u = sk.vk().h().modPow(r, sk.vk().n()).multiply(sk.y()).mod(sk.vk().n());
 		BigInteger bigU1 = sk.vk().bigF().modPow(bigR, sk.vk().bigP());
 		BigInteger bigU2 = sk.vk().bigG().modPow(bigR.add(sk.x()), sk.vk().bigP());
 		BigInteger bigU3 = sk.vk().bigH().modPow(bigR.add(sk.e()), sk.vk().bigP());
@@ -203,14 +203,6 @@ public class GroupSign {
 		BigInteger bigV1 = sk.vk().bigF().modPow(bigRr, sk.vk().bigP());
 		BigInteger bigV2 = sk.vk().bigG().modPow(bigRr.add(rx), sk.vk().bigP());
 		BigInteger bigV3 = sk.vk().bigH().modPow(bigRr.add(re), sk.vk().bigP());
-		
-		
-		System.out.println("values going into calculation of V1");
-		System.out.println("F: " + sk.vk().bigF().toString(16));
-		System.out.println("Rr: " + bigRr.toString(16));
-		System.out.println("P: " + sk.vk().bigP().toString(16));
-		System.out.println("V3: " + bigV3.toString(16));
-		
 		
 		System.out.println("original");
 		System.out.println("v: " + v.toString(16));
