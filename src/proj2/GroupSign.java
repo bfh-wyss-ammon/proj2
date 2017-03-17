@@ -111,39 +111,46 @@ public class GroupSign {
 
 	    }
 	    
-	    this.bigF = new BigInteger(this.modulus-1,this.prime_certainty,this.rand);
-
-	    while(!relPrime(bigP,bigF)){
-		    this.bigF = new BigInteger(this.modulus-1,this.prime_certainty,this.rand);
-	    }
-	    //this.bigF = bigP.subtract(BigInteger.ONE).modPow((bigP.subtract(BigInteger.ONE)).divide(bigQ), bigP);
 	    
-	    this.Xg = new BigInteger(this.modulus-1,this.rand);
-	    this.Xh = new BigInteger(this.modulus-1,this.rand);
+	    this.bigF = new BigInteger(this.modulus,this.rand).mod(this.bigP);
+	    this.bigF = this.bigF.modPow((bigP.subtract(BigInteger.ONE)).divide(bigQ), bigP);
+
+	    
+	    this.Xg = randValModP(this.lQ,this.bigQ);
+	    this.Xh = randValModP(this.lQ,this.bigQ);
+
+	   // this.Xg = new BigInteger(this.lQ,this.rand).mod(this.bigQ);
+	   //this.Xh = new BigInteger(this.lQ,this.rand).mod(this.bigQ);
 	    
 	    this.bigG = bigF.modPow(Xg, this.bigP);
 	    this.bigH = bigF.modPow(Xh, this.bigP);
 	    
 	    
 	    for(int i=0;i<this.number_of_groupmembers;i++){
-	    	this.x[i] = new BigInteger(this.modulus-1,this.rand);
-	    	this.r[i] = new BigInteger(this.modulus, this.rand);
+	    	this.x[i] = new BigInteger(this.lQ,this.rand).mod(this.bigQ);
+	    	this.r[i] = new BigInteger(this.modulus, this.rand).mod(this.n);
 	    	
 	    }
 	    
-	    BigInteger two = new BigInteger("2");
-	    while(this.e.size() < this.number_of_groupmembers){
-		    BigInteger bigE = new BigInteger(this.modulus,this.prime_certainty,this.rand);
+	    BigInteger twoToLE = new BigInteger("2").pow(this.lE - 1);
+	    while( this.e.size() < this.number_of_groupmembers){
+		    BigInteger e = new BigInteger(this.le,this.rand);
+		    BigInteger bigE = twoToLE.add(e);
 		    
-		    BigInteger el = bigE.subtract(two.pow(bigE.bitLength()));
-		    if(!this.e.contains(el)) {
-		    	this.e.add(el);
-		    	System.out.println( "e[i]: " + el.toString(16));
-		    	this.bigE[this.e.size()-1]=bigE;
-		    	System.out.println("" + bigE.bitCount());
-		    }
+		    
+		    boolean repeat =true;
+	    	while(repeat){
+			    e = new BigInteger(this.le,this.rand);
+			    bigE = twoToLE.add(e);
+			    if(e.bitLength()==this.le && bigE.bitLength()==this.lE && bigE.isProbablePrime(this.prime_certainty)) repeat =false;
+	    	}
+	    	this.e.add(e);
+	    	this.bigE[this.e.size()-1]=bigE;
+
 	    }
 
+	    
+	    
 	    
 	    //y[i] is the one we are looking for
 	    //there must be a faster way to do this... (current brute force)
@@ -176,8 +183,8 @@ public class GroupSign {
 	public GroupSignSignature sign(byte[] message, GroupSignMemberKey sk){
 		
 		//all the variables we need
-		BigInteger r = new BigInteger(this.modulus/2,rand);
-		BigInteger bigR = new BigInteger(this.modulus-1,this.rand);
+		BigInteger r = randVal(this.modulus/2);
+		BigInteger bigR = randValModP(this.lQ,this.bigQ);
 		BigInteger u = sk.vk().h().modPow(r, sk.vk().n());
 		BigInteger bigU1 = sk.vk().bigF().modPow(bigR, sk.vk().bigP());
 		BigInteger bigU2 = sk.vk().bigG().modPow(bigR.add(sk.x()), sk.vk().bigP());
@@ -185,11 +192,13 @@ public class GroupSign {
 		
 		//lS is unknown what could it be?
 		//this is wrong, the integers will possibly be to short...
-		Integer lS = 1;
-		BigInteger rx = new BigInteger(this.modulus-1 + 256 + lS ,this.rand);
-		BigInteger rr = new BigInteger(this.modulus/2 + 256 + lS, this.rand);
-		BigInteger re = new BigInteger(sk.e().bitLength() + 256 + lS,this.rand);
-		BigInteger bigRr = new BigInteger(this.modulus-1,this.rand);
+
+		
+		BigInteger rx = randVal(this.lQ + this.lc + this.le);
+		BigInteger rr = randVal(this.modulus/2 + this.lc + this.le);
+		BigInteger re = randVal(this.le + this.lc + this.le);
+		BigInteger bigRr = randValModP(this.lQ,this.bigQ);
+		
 		BigInteger v = u.modPow(re, sk.vk().n()).multiply(sk.vk().g().modPow(rx.negate(),sk.vk().n())).multiply(sk.vk().h().modPow(rr, sk.vk().n())).mod(sk.vk().n());
 		BigInteger bigV1 = sk.vk().bigF().modPow(bigRr, sk.vk().bigP());
 		BigInteger bigV2 = sk.vk().bigG().modPow(bigRr.add(rx), sk.vk().bigP());
@@ -251,6 +260,9 @@ public class GroupSign {
 	
 	
 	public boolean verify(GroupSignPublicKey vk, byte[] message, GroupSignSignature sigma){
+		System.out.println("ze: " + sigma.ze().bitLength() + " should be: " + (this.le+this.lc+this.le));
+		System.out.println("zx: " + sigma.zx().bitLength() + " should be: " + (this.lQ+this.lc+this.le));
+
 		boolean isValid = false;
 		int lS = 1;
 		
@@ -262,7 +274,7 @@ public class GroupSign {
 		BigInteger vPart1 = vk.a().modPow(sigma.c().negate(), vk.n());
 		BigInteger vPart2 = vk.g().modPow(sigma.zx().negate(), vk.n());
 		BigInteger vPart3 = vk.h().modPow(sigma.zr(), vk.n());
-		BigInteger vPart4 = sigma.c().multiply(new BigInteger("2").pow(this.modulus)).add(sigma.ze());
+		BigInteger vPart4 = sigma.c().multiply(new BigInteger("2").pow(this.lE)  ).add(sigma.ze());
 		BigInteger vPart5 = sigma.u().modPow(vPart4, vk.n());
 		
 		
@@ -329,10 +341,10 @@ public class GroupSign {
 	
 	private BigInteger randomElementOfQRn(){
 		
-		BigInteger a = new BigInteger(modulus,this.prime_certainty,rand);
+		BigInteger a = new BigInteger(modulus,this.prime_certainty,rand).mod(this.n);
 		BigInteger check = this.generator.modPow(a, this.nsquared).subtract(BigInteger.ONE).divide(this.n);
 		while(!relPrime(check,n)){
-			a = new BigInteger(modulus,this.prime_certainty,rand);
+			a = new BigInteger(modulus,this.prime_certainty,rand).mod(this.n);
 			check = this.generator.modPow(a, this.nsquared).subtract(BigInteger.ONE).divide(this.n);
 			
 		}
@@ -340,6 +352,23 @@ public class GroupSign {
 		return a;
 		
 	}
+	
+	private BigInteger randValModP (int length, BigInteger p){
+		BigInteger ret = new BigInteger(length ,this.rand).mod(p);
+		while(ret.bitLength()!= length){
+			ret = new BigInteger(length ,this.rand).mod(p);
+		}
+		return ret;
+	}
+	
+	private BigInteger randVal (int length){
+		BigInteger ret = new BigInteger(length ,this.rand);
+		while(ret.bitLength()!= length){
+			ret = new BigInteger(length ,this.rand);
+		}
+		return ret;
+	}
+	
 	
 	
 	private boolean relPrime(BigInteger a, BigInteger b){
