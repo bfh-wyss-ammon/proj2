@@ -83,7 +83,6 @@ public class GroupSign {
 	}
 
 	private boolean keyGen() {
-		System.out.println("start");
 		this.generator = new BigInteger("2");
 		this.p = (new BigInteger((this.modulus / 2), this.prime_certainty, this.rand));
 		this.q = (new BigInteger((this.modulus / 2), this.prime_certainty, this.rand));
@@ -118,9 +117,7 @@ public class GroupSign {
 		
 		//checks
 		if(!this.bigP.isProbablePrime(prime_certainty) || !this.bigQ.isProbablePrime(prime_certainty))return false;
-		
-		System.out.println("bigp " + bigP.bitLength());
-
+	
 		this.bigF = new BigInteger(this.modulus, this.rand).mod(this.bigP);
 		this.bigF = this.bigF.modPow((bigP.subtract(BigInteger.ONE)).divide(bigQ), bigP);
 
@@ -203,12 +200,6 @@ public class GroupSign {
 		BigInteger bigV2 = sk.vk().bigG().modPow(bigRr.add(rx), sk.vk().bigP());
 		BigInteger bigV3 = sk.vk().bigH().modPow(bigRr.add(re), sk.vk().bigP());
 
-		System.out.println("original");
-		System.out.println("v: " + v.toString(16));
-		System.out.println("V1: " + bigV1.toString(16));
-		System.out.println("V2: " + bigV2.toString(16));
-		System.out.println("V3: " + bigV3.toString(16));
-
 		// generate hashing challenge
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
@@ -248,24 +239,16 @@ public class GroupSign {
 	}
 
 	public boolean verify(GroupSignPublicKey vk, byte[] message, GroupSignSignature sigma) {
-		System.out.println("ze: " + sigma.ze().bitLength() + " should be: " + (this.le + this.lc + this.le));
-		System.out.println("zx: " + sigma.zx().bitLength() + " should be: " + (this.lQ + this.lc + this.le));
+		if(sigma.ze().bitLength()!=(this.le + this.lc + this.le) && sigma.zx().bitLength()!=(this.lQ + this.lc + this.le)) return false;
 
 		boolean isValid = false;
-
-		// need to do some more checking of ze and zx!!!
-
-		// calculating v needs some serious calculation, so lets' split it
-
-		// first get the fractions
 		BigInteger vPart1 = vk.a().modPow(sigma.c().negate(), vk.n());
 		BigInteger vPart2 = vk.g().modPow(sigma.zx().negate(), vk.n());
 		BigInteger vPart3 = vk.h().modPow(sigma.zr(), vk.n());
-		BigInteger vPart4 = sigma.c().multiply(new BigInteger("2").pow(this.lE)).add(sigma.ze());
+		BigInteger vPart4 = sigma.c().multiply(new BigInteger("2").pow(this.lE-1)).add(sigma.ze());
 		BigInteger vPart5 = sigma.u().modPow(vPart4, vk.n());
 
-		// then multiply all together (not vPart4 because it is the exponent of
-		// vPart5)
+
 		BigInteger v = vPart1.multiply(vPart2).mod(vk.n()).multiply(vPart3).mod(vk.n()).multiply(vPart5).mod(vk.n());
 
 		BigInteger bigV1 = sigma.bigU1().modPow(sigma.c().negate(), vk.bigP())
@@ -275,13 +258,6 @@ public class GroupSign {
 		BigInteger bigV3 = sigma.bigU3().modPow(sigma.c().negate(), vk.bigP())
 				.multiply(vk.bigH().modPow(sigma.zbigR().add(sigma.ze()), vk.bigP())).mod(vk.bigP());
 
-		System.out.println("verified calculations");
-		System.out.println("v: " + v.toString(16));
-		System.out.println("V1: " + bigV1.toString(16));
-		System.out.println("V2: " + bigV2.toString(16));
-		System.out.println("V3: " + bigV3.toString(16));
-
-		// generate hashing challenge
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
 		try {
@@ -354,12 +330,6 @@ public class GroupSign {
 		return ret;
 	}
 
-	private boolean relPrime(BigInteger a, BigInteger b) {
-
-		return a.gcd(b).intValue() == 1;
-
-	}
-
 	public GroupSignPublicKey vk() {
 		if (this.vk != null)
 			return vk;
@@ -379,12 +349,12 @@ public class GroupSign {
 	}
 
 	public static BigInteger totient(BigInteger n) {
-		BigInteger phi = new BigInteger("1"); // phi = 1
+		BigInteger phi = new BigInteger("1"); 
 		BigInteger i = new BigInteger("2");
-		while (i.compareTo(n) < 0) { // while (i <= n-1)
-			if ((i.gcd(n)).equals(BigInteger.ONE)) // if gcd(i,n) == 1
-				phi = phi.add(BigInteger.ONE); // phi++
-			i = i.add(BigInteger.ONE); // i++
+		while (i.compareTo(n) < 0) { 
+			if ((i.gcd(n)).equals(BigInteger.ONE)) 
+				phi = phi.add(BigInteger.ONE);
+			i = i.add(BigInteger.ONE);
 		}
 		return phi;
 	}
@@ -405,13 +375,13 @@ public class GroupSign {
 			System.out.println("error");
 		}
 
-		// byte[] othermessage = new BigInteger("1965").toByteArray();
-		// valid = grpS.verify(vk, othermessage, sigma_testmessage);
-		// if (valid) {
-		// System.out.println("error");
-		// }else{
-		// System.out.println("the signature was rejected correctly");
-		// }
+		 byte[] othermessage = new BigInteger("1965").toByteArray();
+		 valid = grpS.verify(vk, othermessage, sigma_testmessage);
+		 if (valid) {
+		 System.out.println("error");
+		 }else{
+		 System.out.println("the signature was rejected correctly");
+		 }
 
 	}
 
