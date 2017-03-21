@@ -1,16 +1,13 @@
 package src.proj2;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.math.*;
 import java.security.*;
 import java.util.ArrayList;
-import java.util.LinkedList;
+
 
 public class GroupSign {
 
@@ -29,7 +26,7 @@ public class GroupSign {
 	public final int le = 60;
 
 	// sets how many rounds of the miller rabin test are run
-	public final int prime_certainty = 10;
+	public final int prime_certainty = 100;
 
 	public final int number_of_groupmembers = 2;
 
@@ -88,18 +85,25 @@ public class GroupSign {
 	private boolean keyGen() {
 		System.out.println("start");
 		this.generator = new BigInteger("2");
-		this.p = new BigInteger(this.modulus / 2, this.prime_certainty, this.rand);
-		this.q = new BigInteger(this.modulus / 2, this.prime_certainty, this.rand);
+		this.p = (new BigInteger((this.modulus / 2), this.prime_certainty, this.rand));
+		this.q = (new BigInteger((this.modulus / 2), this.prime_certainty, this.rand));
 		this.n = p.multiply(q);
 		this.nsquared = n.multiply(n);
+		
+		
+		//some easy checks
+		if(this.n.bitLength()!= this.modulus || !this.p.isProbablePrime(prime_certainty) ||!this.q.isProbablePrime(prime_certainty) )return false;
 
 		this.a = randomElementOfQRn();
 		this.g = randomElementOfQRn();
 		this.h = randomElementOfQRn();
 
+
 		this.bigQ = new BigInteger(this.lQ, this.prime_certainty, this.rand);
 		BigInteger multiplicator = new BigInteger("2").pow(this.modulus - this.lQ);
 		this.bigP = bigQ.multiply(multiplicator).add(BigInteger.ONE);
+		
+		
 		while (true) {
 			if (bigP.bitLength() != this.modulus)
 				return false;
@@ -111,6 +115,10 @@ public class GroupSign {
 			this.bigP = bigQ.multiply(multiplicator).add(BigInteger.ONE);
 
 		}
+		
+		//checks
+		if(!this.bigP.isProbablePrime(prime_certainty) || !this.bigQ.isProbablePrime(prime_certainty))return false;
+		
 		System.out.println("bigp " + bigP.bitLength());
 
 		this.bigF = new BigInteger(this.modulus, this.rand).mod(this.bigP);
@@ -119,8 +127,6 @@ public class GroupSign {
 		this.Xg = randValModP(this.lQ, this.bigQ);
 		this.Xh = randValModP(this.lQ, this.bigQ);
 
-		// this.Xg = new BigInteger(this.lQ,this.rand).mod(this.bigQ);
-		// this.Xh = new BigInteger(this.lQ,this.rand).mod(this.bigQ);
 
 		this.bigG = bigF.modPow(Xg, this.bigP);
 		this.bigH = bigF.modPow(Xh, this.bigP);
@@ -149,9 +155,7 @@ public class GroupSign {
 
 		}
 
-
 		for (int i = 0; i < number_of_groupmembers; i++) {
-			System.out.println("y:" + i);
 			BigInteger res = this.a.multiply(g.modPow(x[i], this.n)).multiply(h.modPow(r[i], this.n)).mod(this.n);
 			BigInteger totient = this.p.subtract(BigInteger.ONE).multiply(this.q.subtract(BigInteger.ONE));
 			BigInteger privat = bigE[i].modInverse(totient);
@@ -236,7 +240,7 @@ public class GroupSign {
 		res = c.multiply(sk.e());
 		BigInteger ze = re.add(res);
 
-		BigInteger zbigR = bigRr.add(c.multiply(bigR)).mod(vk.bigQ());
+		BigInteger zbigR = bigRr.add(c.multiply(bigR).mod(vk.bigQ()));
 
 		// return the new signature
 		return new GroupSignSignature(u, bigU1, bigU2, bigU3, zx, zr, ze, zbigR, c, message);
@@ -248,7 +252,6 @@ public class GroupSign {
 		System.out.println("zx: " + sigma.zx().bitLength() + " should be: " + (this.lQ + this.lc + this.le));
 
 		boolean isValid = false;
-
 
 		// need to do some more checking of ze and zx!!!
 
@@ -264,7 +267,6 @@ public class GroupSign {
 		// then multiply all together (not vPart4 because it is the exponent of
 		// vPart5)
 		BigInteger v = vPart1.multiply(vPart2).mod(vk.n()).multiply(vPart3).mod(vk.n()).multiply(vPart5).mod(vk.n());
-
 
 		BigInteger bigV1 = sigma.bigU1().modPow(sigma.c().negate(), vk.bigP())
 				.multiply(vk.bigF().modPow(sigma.zbigR(), vk.bigP())).mod(vk.bigP());
@@ -314,34 +316,32 @@ public class GroupSign {
 			return bos.toByteArray();
 		}
 	}
-
-	private Object convertFromBytes(byte[] bytes) throws IOException, ClassNotFoundException {
-		try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes); ObjectInput in = new ObjectInputStream(bis)) {
-			return in.readObject();
-		}
+	
+	private boolean quadraticResidue(BigInteger a){
+		BigInteger two = BigInteger.ONE.add(BigInteger.ONE);
+		
+		BigInteger test1 = this.p.subtract(BigInteger.ONE).divide(two);
+		BigInteger test2 = this.q.subtract(BigInteger.ONE).divide(two);
+		
+		return a.mod(this.p).modPow(test1, this.p).equals(BigInteger.ONE) && a.mod(this.q).modPow(test2, this.q).equals(BigInteger.ONE);
 	}
 
+	
+
 	private BigInteger randomElementOfQRn() {
-
 		BigInteger a = randValModP(this.modulus, this.n);
-		// BigInteger a = new BigInteger(this.modulus,this.rand).mod(this.n);
-		// BigInteger a = new
-		// BigInteger(modulus,this.prime_certainty,rand).mod(this.n);
-		BigInteger check = this.generator.modPow(a, this.nsquared).subtract(BigInteger.ONE).divide(this.n);
-		while (!relPrime(check, n)) {
-			a = randValModP(this.modulus, this.n);
-			check = this.generator.modPow(a, this.nsquared).subtract(BigInteger.ONE).divide(this.n);
-
+		
+		while (!quadraticResidue(a)) {
+			a = randValModP(this.modulus, this.n);		
 		}
-
 		return a;
 
 	}
 
-	private BigInteger randValModP(int length, BigInteger p) {
-		BigInteger ret = new BigInteger(length, this.rand).mod(p);
-		while (ret.bitLength() != length) {
-			ret = new BigInteger(length, this.rand).mod(p);
+	private BigInteger randValModP(int maxlength, BigInteger p) {
+		BigInteger ret = new BigInteger(maxlength, this.rand).mod(p);
+		while (ret.bitLength() != maxlength) {
+			ret = new BigInteger(maxlength, this.rand).mod(p);
 		}
 		return ret;
 	}
