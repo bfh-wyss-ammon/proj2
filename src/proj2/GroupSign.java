@@ -8,7 +8,6 @@ import java.math.*;
 import java.security.*;
 import java.util.ArrayList;
 
-
 public class GroupSign {
 
 	// sets the size of the key material
@@ -22,7 +21,7 @@ public class GroupSign {
 	// length of c
 	public final int lc = 160;
 
-	// lengt of e and s
+	// length of e and s
 	public final int le = 60;
 
 	// sets how many rounds of the miller rabin test are run
@@ -88,21 +87,20 @@ public class GroupSign {
 		this.q = (new BigInteger((this.modulus / 2), this.prime_certainty, this.rand));
 		this.n = p.multiply(q);
 		this.nsquared = n.multiply(n);
-		
-		
-		//some easy checks
-		if(this.n.bitLength()!= this.modulus || !this.p.isProbablePrime(prime_certainty) ||!this.q.isProbablePrime(prime_certainty) )return false;
+
+		// some easy checks
+		if (this.n.bitLength() != this.modulus || !this.p.isProbablePrime(prime_certainty)
+				|| !this.q.isProbablePrime(prime_certainty))
+			return false;
 
 		this.a = randomElementOfQRn();
 		this.g = randomElementOfQRn();
 		this.h = randomElementOfQRn();
 
-
 		this.bigQ = new BigInteger(this.lQ, this.prime_certainty, this.rand);
 		BigInteger multiplicator = new BigInteger("2").pow(this.modulus - this.lQ);
 		this.bigP = bigQ.multiply(multiplicator).add(BigInteger.ONE);
-		
-		
+
 		while (true) {
 			if (bigP.bitLength() != this.modulus)
 				return false;
@@ -114,16 +112,16 @@ public class GroupSign {
 			this.bigP = bigQ.multiply(multiplicator).add(BigInteger.ONE);
 
 		}
-		
-		//checks
-		if(!this.bigP.isProbablePrime(prime_certainty) || !this.bigQ.isProbablePrime(prime_certainty))return false;
-	
+
+		// checks
+		if (!this.bigP.isProbablePrime(prime_certainty) || !this.bigQ.isProbablePrime(prime_certainty))
+			return false;
+
 		this.bigF = new BigInteger(this.modulus, this.rand).mod(this.bigP);
 		this.bigF = this.bigF.modPow((bigP.subtract(BigInteger.ONE)).divide(bigQ), bigP);
 
 		this.Xg = randValModP(this.lQ, this.bigQ);
 		this.Xh = randValModP(this.lQ, this.bigQ);
-
 
 		this.bigG = bigF.modPow(Xg, this.bigP);
 		this.bigH = bigF.modPow(Xh, this.bigP);
@@ -186,8 +184,7 @@ public class GroupSign {
 		BigInteger bigU2 = sk.vk().bigG().modPow(bigR.add(sk.x()), sk.vk().bigP());
 		BigInteger bigU3 = sk.vk().bigH().modPow(bigR.add(sk.e()), sk.vk().bigP());
 
-		// lS is unknown what could it be?
-		// this is wrong, the integers will possibly be to short...
+
 
 		BigInteger rx = randVal(this.lQ + this.lc + this.le);
 		BigInteger rr = randVal(this.modulus / 2 + this.lc + this.le);
@@ -239,15 +236,16 @@ public class GroupSign {
 	}
 
 	public boolean verify(GroupSignPublicKey vk, byte[] message, GroupSignSignature sigma) {
-		if(sigma.ze().bitLength()!=(this.le + this.lc + this.le) && sigma.zx().bitLength()!=(this.lQ + this.lc + this.le)) return false;
+		if (sigma.ze().bitLength() != (this.le + this.lc + this.le)
+				&& sigma.zx().bitLength() != (this.lQ + this.lc + this.le))
+			return false;
 
 		boolean isValid = false;
 		BigInteger vPart1 = vk.a().modPow(sigma.c().negate(), vk.n());
 		BigInteger vPart2 = vk.g().modPow(sigma.zx().negate(), vk.n());
 		BigInteger vPart3 = vk.h().modPow(sigma.zr(), vk.n());
-		BigInteger vPart4 = sigma.c().multiply(new BigInteger("2").pow(this.lE-1)).add(sigma.ze());
+		BigInteger vPart4 = sigma.c().multiply(new BigInteger("2").pow(this.lE - 1)).add(sigma.ze());
 		BigInteger vPart5 = sigma.u().modPow(vPart4, vk.n());
-
 
 		BigInteger v = vPart1.multiply(vPart2).mod(vk.n()).multiply(vPart3).mod(vk.n()).multiply(vPart5).mod(vk.n());
 
@@ -285,28 +283,18 @@ public class GroupSign {
 
 		return isValid;
 	}
-	
+
 	public int open(GroupSignPublicKey vk, GroupSignManagerKey gsmk, byte[] message, GroupSignSignature sigma) {
-		if(!verify(vk,message,sigma))return -1;
-		
-		//BigInteger exponent = vk.bigP().subtract(BigInteger.ONE).divide(vk.bigQ());
-		//BigInteger bigU1 = sigma.bigU1().modPow(exponent, vk.bigP());
-		//BigInteger bigU2 = sigma.bigU2().modPow(exponent, vk.bigP());
-		
-		//bigU2 = bigU2.modPow(gsmk.Xg(), vk.bigP());
-		
+		if (!verify(vk, message, sigma))
+			return -1;
 		BigInteger bigU1 = sigma.bigU1().modPow(gsmk.Xg(), vk.bigP());
-		int res=-1;
-		
-		for (int i=0; i<gsmk.bigY().length;i++){
-			if(bigU1.multiply(gsmk.bigY()[i]).mod(vk.bigP()).equals(sigma.bigU2()))res=i;
+		int res = -1;
+
+		for (int i = 0; i < gsmk.bigY().length; i++) {
+			if (bigU1.multiply(gsmk.bigY()[i]).mod(vk.bigP()).equals(sigma.bigU2()))
+				res = i;
 		}
-		
-		
-		
-		
-		
-		
+
 		return res;
 	}
 
@@ -316,23 +304,22 @@ public class GroupSign {
 			return bos.toByteArray();
 		}
 	}
-	
-	private boolean quadraticResidue(BigInteger a){
+
+	private boolean quadraticResidue(BigInteger a) {
 		BigInteger two = BigInteger.ONE.add(BigInteger.ONE);
-		
+
 		BigInteger test1 = this.p.subtract(BigInteger.ONE).divide(two);
 		BigInteger test2 = this.q.subtract(BigInteger.ONE).divide(two);
-		
-		return a.mod(this.p).modPow(test1, this.p).equals(BigInteger.ONE) && a.mod(this.q).modPow(test2, this.q).equals(BigInteger.ONE);
-	}
 
-	
+		return a.mod(this.p).modPow(test1, this.p).equals(BigInteger.ONE)
+				&& a.mod(this.q).modPow(test2, this.q).equals(BigInteger.ONE);
+	}
 
 	private BigInteger randomElementOfQRn() {
 		BigInteger a = randValModP(this.modulus, this.n);
-		
+
 		while (!quadraticResidue(a)) {
-			a = randValModP(this.modulus, this.n);		
+			a = randValModP(this.modulus, this.n);
 		}
 		return a;
 
@@ -373,10 +360,10 @@ public class GroupSign {
 	}
 
 	public static BigInteger totient(BigInteger n) {
-		BigInteger phi = new BigInteger("1"); 
+		BigInteger phi = new BigInteger("1");
 		BigInteger i = new BigInteger("2");
-		while (i.compareTo(n) < 0) { 
-			if ((i.gcd(n)).equals(BigInteger.ONE)) 
+		while (i.compareTo(n) < 0) {
+			if ((i.gcd(n)).equals(BigInteger.ONE))
 				phi = phi.add(BigInteger.ONE);
 			i = i.add(BigInteger.ONE);
 		}
@@ -400,16 +387,16 @@ public class GroupSign {
 			System.out.println("error");
 		}
 
-		 byte[] othermessage = new BigInteger("1965").toByteArray();
-		 valid = grpS.verify(vk, othermessage, sigma_testmessage);
-		 if (valid) {
-		 System.out.println("error");
-		 }else{
-		 System.out.println("the signature was rejected correctly");
-		 }
-		 
-		 int member = grpS.open(vk, gsmk, testmessage, sigma_testmessage);
-		 System.out.println("The message was signed by member " + member);
+		byte[] othermessage = new BigInteger("1965").toByteArray();
+		valid = grpS.verify(vk, othermessage, sigma_testmessage);
+		if (valid) {
+			System.out.println("error");
+		} else {
+			System.out.println("the signature was rejected correctly");
+		}
+
+		int member = grpS.open(vk, gsmk, testmessage, sigma_testmessage);
+		System.out.println("The message was signed by member " + member);
 
 	}
 
