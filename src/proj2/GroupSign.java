@@ -285,6 +285,30 @@ public class GroupSign {
 
 		return isValid;
 	}
+	
+	public int open(GroupSignPublicKey vk, GroupSignManagerKey gsmk, byte[] message, GroupSignSignature sigma) {
+		if(!verify(vk,message,sigma))return -1;
+		
+		//BigInteger exponent = vk.bigP().subtract(BigInteger.ONE).divide(vk.bigQ());
+		//BigInteger bigU1 = sigma.bigU1().modPow(exponent, vk.bigP());
+		//BigInteger bigU2 = sigma.bigU2().modPow(exponent, vk.bigP());
+		
+		//bigU2 = bigU2.modPow(gsmk.Xg(), vk.bigP());
+		
+		BigInteger bigU1 = sigma.bigU1().modPow(gsmk.Xg(), vk.bigP());
+		int res=-1;
+		
+		for (int i=0; i<gsmk.bigY().length;i++){
+			if(bigU1.multiply(gsmk.bigY()[i]).mod(vk.bigP()).equals(sigma.bigU2()))res=i;
+		}
+		
+		
+		
+		
+		
+		
+		return res;
+	}
 
 	private byte[] convertToBytes(Object object) throws IOException {
 		try (ByteArrayOutputStream bos = new ByteArrayOutputStream(); ObjectOutput out = new ObjectOutputStream(bos)) {
@@ -364,8 +388,9 @@ public class GroupSign {
 
 		GroupSign grpS = new GroupSign();
 		byte[] testmessage = new BigInteger("1990").toByteArray();
-		GroupSignMemberKey sk = grpS.sk(0);
+		GroupSignMemberKey sk = grpS.sk(1);
 		GroupSignPublicKey vk = grpS.vk();
+		GroupSignManagerKey gsmk = grpS.gsmk();
 		GroupSignSignature sigma_testmessage = grpS.sign(testmessage, sk);
 
 		boolean valid = grpS.verify(vk, testmessage, sigma_testmessage);
@@ -382,6 +407,9 @@ public class GroupSign {
 		 }else{
 		 System.out.println("the signature was rejected correctly");
 		 }
+		 
+		 int member = grpS.open(vk, gsmk, testmessage, sigma_testmessage);
+		 System.out.println("The message was signed by member " + member);
 
 	}
 
