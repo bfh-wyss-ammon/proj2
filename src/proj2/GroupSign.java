@@ -173,9 +173,32 @@ public class GroupSign {
 
 		return true;
 	}
+	
+	private BigInteger getHash(ArrayList<byte[]> values){		
+		BigInteger last = new BigInteger("0");
+		for (byte[] value : values){
+			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		
+			try {
+				outputStream.write(last.toByteArray());
+				outputStream.write(value);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			byte toBeHashedValue[] = outputStream.toByteArray();
+			md.update(toBeHashedValue, 0, toBeHashedValue.length);
+			last = new BigInteger(1, md.digest());
+			
+		}
+		
+		
+
+	return last;
+	}
+	
 
 	public GroupSignSignature sign(byte[] message, GroupSignMemberKey sk) {
-
 		// all the variables we need
 		BigInteger r = randVal(this.modulus / 2);
 		BigInteger bigR = randValModP(this.lQ, this.bigQ);
@@ -198,28 +221,25 @@ public class GroupSign {
 		BigInteger bigV3 = sk.vk().bigH().modPow(bigRr.add(re), sk.vk().bigP());
 
 		// generate hashing challenge
-		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
+		ArrayList<byte[]> input = new ArrayList<byte[]>();
 		try {
-			outputStream.write(convertToBytes(vk));
-			outputStream.write(u.toByteArray());
-			outputStream.write(v.toByteArray());
-			outputStream.write(bigU1.toByteArray());
-			outputStream.write(bigU2.toByteArray());
-			outputStream.write(bigU3.toByteArray());
-			outputStream.write(bigV1.toByteArray());
-			outputStream.write(bigV2.toByteArray());
-			outputStream.write(bigV3.toByteArray());
-			outputStream.write(message);
+			input.add(convertToBytes(vk));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
-		byte toBeHashedValue[] = outputStream.toByteArray();
-		md.update(toBeHashedValue, 0, toBeHashedValue.length);
-		BigInteger c = new BigInteger(1, md.digest());
-
+		input.add(u.toByteArray());
+		input.add(v.toByteArray());
+		input.add(bigU1.toByteArray());
+		input.add(bigU2.toByteArray());
+		input.add(bigU3.toByteArray());
+		input.add(bigV1.toByteArray());
+		input.add(bigV2.toByteArray());
+		input.add(bigV3.toByteArray());
+		input.add(message);
+		BigInteger c = getHash(input);
+		
+		
 		BigInteger zx = rx.add(c.multiply(sk.x()));
 
 		BigInteger res = sk.r().negate().subtract(r.multiply(sk.bigE()));
@@ -256,27 +276,24 @@ public class GroupSign {
 		BigInteger bigV3 = sigma.bigU3().modPow(sigma.c().negate(), vk.bigP())
 				.multiply(vk.bigH().modPow(sigma.zbigR().add(sigma.ze()), vk.bigP())).mod(vk.bigP());
 
-		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
+		
+		ArrayList<byte[]> input = new ArrayList<byte[]>();
 		try {
-			outputStream.write(convertToBytes(vk));
-			outputStream.write(sigma.u().toByteArray());
-			outputStream.write(v.toByteArray());
-			outputStream.write(sigma.bigU1().toByteArray());
-			outputStream.write(sigma.bigU2().toByteArray());
-			outputStream.write(sigma.bigU3().toByteArray());
-			outputStream.write(bigV1.toByteArray());
-			outputStream.write(bigV2.toByteArray());
-			outputStream.write(bigV3.toByteArray());
-			outputStream.write(message);
+			input.add(convertToBytes(vk));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
-		byte toBeHashedValue[] = outputStream.toByteArray();
-		md.update(toBeHashedValue, 0, toBeHashedValue.length);
-		BigInteger c = new BigInteger(1, md.digest());
+		input.add(sigma.u().toByteArray());
+		input.add(v.toByteArray());
+		input.add(sigma.bigU1().toByteArray());
+		input.add(sigma.bigU2().toByteArray());
+		input.add(sigma.bigU3().toByteArray());
+		input.add(bigV1.toByteArray());
+		input.add(bigV2.toByteArray());
+		input.add(bigV3.toByteArray());
+		input.add(message);
+		BigInteger c = getHash(input);
 		System.out.println("calculated hash: " + c.toString(16));
 		System.out.println("signature hash: " + sigma.c().toString(16));
 		isValid = c.equals(sigma.c());
