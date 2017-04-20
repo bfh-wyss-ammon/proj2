@@ -14,10 +14,11 @@ public class GroupSignPublicKey implements Serializable {
 	private final BigInteger bigF;
 	private final BigInteger bigG;
 	private final BigInteger bigH;
+	private final BigInteger w;
 	
 	
 	public GroupSignPublicKey(BigInteger n, BigInteger a, BigInteger g, BigInteger h, BigInteger bigQ, BigInteger bigP,
-			BigInteger bigF, BigInteger bigG, BigInteger bigH) {
+			BigInteger bigF, BigInteger bigG, BigInteger bigH, BigInteger w) {
 		this.n = n;
 		this.a = a;
 		this.g = g;
@@ -27,6 +28,7 @@ public class GroupSignPublicKey implements Serializable {
 		this.bigF = bigF;
 		this.bigG = bigG;
 		this.bigH = bigH;
+		this.w = w;
 	}
 	public BigInteger n() {
 		return n;
@@ -54,6 +56,10 @@ public class GroupSignPublicKey implements Serializable {
 	}
 	public BigInteger bigH() {
 		return bigH;
+	}
+	
+	public BigInteger w(){
+		return w;
 	}
 	
 	

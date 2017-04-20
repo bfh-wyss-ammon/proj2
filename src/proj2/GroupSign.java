@@ -27,12 +27,12 @@ public class GroupSign {
 	// sets how many rounds of the miller rabin test are run
 	public final int prime_certainty = 100;
 
-	public final int number_of_groupmembers = 2;
+	//public final int number_of_groupmembers = 2;
 
 	// store the key once they are generated
 	private GroupSignPublicKey vk;
 	private GroupSignManagerKey gsmk;
-	private GroupSignMemberKey[] sk = new GroupSignMemberKey[number_of_groupmembers];
+	private ArrayList<GroupSignMemberKey> skList = new ArrayList<GroupSignMemberKey>();
 
 	// the group public key and the generator (is equal to n+1)
 	private BigInteger p;
@@ -43,6 +43,7 @@ public class GroupSign {
 	private BigInteger a;
 	private BigInteger g;
 	private BigInteger h;
+	private BigInteger w;
 	private BigInteger bigQ;
 	private BigInteger bigP;
 	private BigInteger bigF;
@@ -54,16 +55,16 @@ public class GroupSign {
 	private MessageDigest md;
 
 	// the group members private key
-	private BigInteger[] x = new BigInteger[number_of_groupmembers];
-	private BigInteger[] r = new BigInteger[number_of_groupmembers];
-	private ArrayList<BigInteger> e = new ArrayList<BigInteger>();
-	private BigInteger[] y = new BigInteger[number_of_groupmembers];
-	private BigInteger[] bigE = new BigInteger[number_of_groupmembers];
+	//private BigInteger[] x = new BigInteger[number_of_groupmembers];
+	//private BigInteger[] r = new BigInteger[number_of_groupmembers];
+	//private ArrayList<BigInteger> e = new ArrayList<BigInteger>();
+	//private BigInteger[] y = new BigInteger[number_of_groupmembers];
+	//private BigInteger[] bigE = new BigInteger[number_of_groupmembers];
 
 	// the group manager private key
 	private BigInteger Xg;
 	private BigInteger Xh;
-	private BigInteger[] bigY = new BigInteger[number_of_groupmembers];
+	//private BigInteger[] bigY = new BigInteger[number_of_groupmembers];
 
 	public GroupSign() {
 		rand = new SecureRandom();
@@ -93,9 +94,12 @@ public class GroupSign {
 				|| !this.q.isProbablePrime(prime_certainty))
 			return false;
 
+		BigInteger alpha = new BigInteger(this.modulus, this.rand);
 		this.a = randomElementOfQRn();
-		this.g = randomElementOfQRn();
 		this.h = randomElementOfQRn();
+		this.g = h.modPow(alpha, this.n);
+		this.w = randomElementOfQRn();
+
 
 		this.bigQ = new BigInteger(this.lQ, this.prime_certainty, this.rand);
 		BigInteger multiplicator = new BigInteger("2").pow(this.modulus - this.lQ);
@@ -125,7 +129,7 @@ public class GroupSign {
 
 		this.bigG = bigF.modPow(Xg, this.bigP);
 		this.bigH = bigF.modPow(Xh, this.bigP);
-
+/**
 		for (int i = 0; i < this.number_of_groupmembers; i++) {
 			this.x[i] = new BigInteger(this.lQ, this.rand).mod(this.bigQ);
 			this.r[i] = new BigInteger(this.modulus, this.rand).mod(this.n);
@@ -136,7 +140,7 @@ public class GroupSign {
 		while (this.e.size() < this.number_of_groupmembers) {
 			BigInteger e = new BigInteger(this.le, this.rand);
 			BigInteger bigE = twoToLE.add(e);
-
+		
 			boolean repeat = true;
 			while (repeat) {
 				e = new BigInteger(this.le, this.rand);
@@ -162,15 +166,18 @@ public class GroupSign {
 		for (int i = 0; i < number_of_groupmembers; i++) {
 			this.bigY[i] = bigG.modPow(this.x[i], this.bigP);
 		}
-
+**/
 		// now that we have all the variables, we can construct the key objects
 		this.vk = new GroupSignPublicKey(this.n, this.a, this.g, this.h, this.bigQ, this.bigP, this.bigF, this.bigG,
-				this.bigH);
-		this.gsmk = new GroupSignManagerKey(this.vk, this.Xg, this.bigY);
+				this.bigH,this.w);
+
+		this.gsmk = new GroupSignManagerKey(this.vk, this.Xg);
+		
+		/**
 		for (int i = 0; i < number_of_groupmembers; i++) {
 			this.sk[i] = new GroupSignMemberKey(this.vk, this.x[i], this.y[i], this.e.get(i), this.r[i], this.bigE[i]);
 		}
-
+**/
 		return true;
 	}
 	
@@ -305,14 +312,14 @@ public class GroupSign {
 		if (!verify(vk, message, sigma))
 			return -1;
 		BigInteger bigU1 = sigma.bigU1().modPow(gsmk.Xg(), vk.bigP());
-		int res = -1;
 
-		for (int i = 0; i < gsmk.bigY().length; i++) {
-			if (bigU1.multiply(gsmk.bigY()[i]).mod(vk.bigP()).equals(sigma.bigU2()))
-				res = i;
+		int i=0;
+		for (BigInteger bigY : gsmk.bigY()) {
+			if (bigU1.multiply(bigY).mod(vk.bigP()).equals(sigma.bigU2()))
+				i++;
 		}
 
-		return res;
+		return i;
 	}
 
 	private byte[] convertToBytes(Object object) throws IOException {
@@ -365,8 +372,8 @@ public class GroupSign {
 	}
 
 	public GroupSignMemberKey sk(int memberId) {
-		if (this.sk[memberId] != null)
-			return sk[memberId];
+		if (this.skList.get(memberId) != null)
+			return skList.get(memberId);
 		return null;
 	}
 
