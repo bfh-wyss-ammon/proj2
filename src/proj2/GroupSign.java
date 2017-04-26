@@ -66,7 +66,7 @@ public class GroupSign {
 	private BigInteger Xh;
 	//private BigInteger[] bigY = new BigInteger[number_of_groupmembers];
 
-	public GroupSign() {
+	public GroupSign(boolean isServer) {
 		rand = new SecureRandom();
 		try {
 			md = MessageDigest.getInstance("SHA-1");
@@ -75,7 +75,7 @@ public class GroupSign {
 			e.printStackTrace();
 		}
 
-		while (true) {
+		while (isServer) {
 			if (keyGen())
 				break;
 		}
@@ -104,7 +104,7 @@ public class GroupSign {
 		this.bigQ = new BigInteger(this.lQ, this.prime_certainty, this.rand);
 		BigInteger multiplicator = new BigInteger("2").pow(this.modulus - this.lQ);
 		this.bigP = bigQ.multiply(multiplicator).add(BigInteger.ONE);
-
+		
 		while (true) {
 			if (bigP.bitLength() != this.modulus)
 				return false;
@@ -129,55 +129,14 @@ public class GroupSign {
 
 		this.bigG = bigF.modPow(Xg, this.bigP);
 		this.bigH = bigF.modPow(Xh, this.bigP);
-/**
-		for (int i = 0; i < this.number_of_groupmembers; i++) {
-			this.x[i] = new BigInteger(this.lQ, this.rand).mod(this.bigQ);
-			this.r[i] = new BigInteger(this.modulus, this.rand).mod(this.n);
 
-		}
-
-		BigInteger twoToLE = new BigInteger("2").pow(this.lE - 1);
-		while (this.e.size() < this.number_of_groupmembers) {
-			BigInteger e = new BigInteger(this.le, this.rand);
-			BigInteger bigE = twoToLE.add(e);
-		
-			boolean repeat = true;
-			while (repeat) {
-				e = new BigInteger(this.le, this.rand);
-				bigE = twoToLE.add(e);
-				if (e.bitLength() == this.le && bigE.bitLength() == this.lE
-						&& bigE.isProbablePrime(this.prime_certainty))
-					repeat = false;
-			}
-			this.e.add(e);
-			this.bigE[this.e.size() - 1] = bigE;
-
-		}
-
-		for (int i = 0; i < number_of_groupmembers; i++) {
-			BigInteger res = this.a.multiply(g.modPow(x[i], this.n)).multiply(h.modPow(r[i], this.n)).mod(this.n);
-			BigInteger totient = this.p.subtract(BigInteger.ONE).multiply(this.q.subtract(BigInteger.ONE));
-			BigInteger privat = bigE[i].modInverse(totient);
-
-			// encrypt res
-			this.y[i] = res.modPow(privat, this.n);
-		}
-
-		for (int i = 0; i < number_of_groupmembers; i++) {
-			this.bigY[i] = bigG.modPow(this.x[i], this.bigP);
-		}
-**/
 		// now that we have all the variables, we can construct the key objects
 		this.vk = new GroupSignPublicKey(this.n, this.a, this.g, this.h, this.bigQ, this.bigP, this.bigF, this.bigG,
 				this.bigH,this.w);
 
 		this.gsmk = new GroupSignManagerKey(this.vk, this.Xg);
 		
-		/**
-		for (int i = 0; i < number_of_groupmembers; i++) {
-			this.sk[i] = new GroupSignMemberKey(this.vk, this.x[i], this.y[i], this.e.get(i), this.r[i], this.bigE[i]);
-		}
-**/
+
 		return true;
 	}
 	
@@ -306,6 +265,50 @@ public class GroupSign {
 		isValid = c.equals(sigma.c());
 
 		return isValid;
+	}
+	
+	public GroupSignJoinResponse joinToGroupServer(GroupSignJoinRequest req){
+		this.gsmk.join(req.bigY());
+		
+		BigInteger e = new BigInteger(this.le, this.rand);
+		BigInteger twoToLE = new BigInteger("2").pow(this.lE - 1);
+		BigInteger bigE = twoToLE.add(e);
+	
+		boolean repeat = true;
+		while (repeat) {
+			e = new BigInteger(this.le, this.rand);
+			bigE = twoToLE.add(e);
+			if (e.bitLength() == this.le && bigE.bitLength() == this.lE
+					&& bigE.isProbablePrime(this.prime_certainty))
+				repeat = false;
+		}
+		
+		BigInteger wi = this.vk().w().modPow(bigE.negate(), this.vk().n());
+		BigInteger ri = new BigInteger(e.bitLength(), this.rand).mod(e);
+		BigInteger part = this.vk().a().multiply(req.commitment().modPow(ri, this.vk().n()));
+		BigInteger yi = part.modPow(bigE.negate(), this.vk().n());
+		
+
+		
+		return new GroupSignJoinResponse(wi,yi,bigE,ri,e);
+	}
+	
+	public GroupSignMemberKey joinClientInit(){
+		
+		BigInteger xi = new BigInteger(this.lQ, this.rand).mod(this.vk.bigQ());
+		BigInteger bigY = this.vk.bigG().modPow(xi, this.vk.bigP());
+		BigInteger ri = randValModP(this.modulus, this.vk.n());
+		
+		BigInteger commitment = this.vk.g().modPow(xi, this.vk.n()).multiply(this.vk.h().modPow(ri, this.vk.n())).mod(this.vk.n());
+		
+		return new GroupSignMemberKey(this.vk, null, xi, null, null, ri, null, bigY, commitment);
+		
+	}
+	
+	public GroupSignMemberKey joinClientResponse(GroupSignJoinResponse resp, GroupSignMemberKey initKey){
+		
+		return new GroupSignMemberKey(this.vk(),resp.wi(),initKey.x(),resp.yi(),resp.e(),resp.ri().add(initKey.r()), resp.Ei(),initKey.bigY(),initKey.commitment() );
+		
 	}
 
 	public int open(GroupSignPublicKey vk, GroupSignManagerKey gsmk, byte[] message, GroupSignSignature sigma) {

@@ -6,21 +6,35 @@ public class GroupSignMemberKey {
 	
 	private final GroupSignPublicKey vk;
 	private final BigInteger x;
+	private final BigInteger w;
 	private final BigInteger y;
 	private final BigInteger e;
 	private final BigInteger r;
 	private final BigInteger bigE;
+	private final BigInteger bigY;
+	private final BigInteger commitment;
 	
 	
 	
 	
-	public GroupSignMemberKey(GroupSignPublicKey vk, BigInteger x, BigInteger y, BigInteger e, BigInteger r, BigInteger bigE) {
+	public GroupSignMemberKey(GroupSignPublicKey vk, BigInteger w, BigInteger x, BigInteger y, BigInteger e, BigInteger r, BigInteger bigE, BigInteger bigY, BigInteger commitment) {
 		this.vk = vk;
+		this.w = w; 
 		this.x = x;
 		this.y = y;
 		this.e = e;
 		this.r = r;
 		this.bigE = bigE;
+		this.bigY =bigY;
+		this.commitment = commitment;
+	}
+	
+	public BigInteger bigY(){
+		return bigY;
+	}
+	
+	public BigInteger commitment(){
+		return commitment;
 	}
 	
 	public BigInteger bigE(){
