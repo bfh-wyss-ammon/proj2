@@ -94,7 +94,7 @@ public class GroupSign {
 				|| !this.q.isProbablePrime(prime_certainty))
 			return false;
 
-		BigInteger alpha = new BigInteger(this.modulus, this.rand);
+		BigInteger alpha = new BigInteger(this.modulus,this.prime_certainty, this.rand);
 		this.a = randomElementOfQRn();
 		this.h = randomElementOfQRn();
 		this.g = h.modPow(alpha, this.n);
@@ -168,7 +168,10 @@ public class GroupSign {
 		// all the variables we need
 		BigInteger r = randVal(this.modulus / 2);
 		BigInteger bigR = randValModP(this.lQ, this.bigQ);
-		BigInteger u = sk.vk().h().modPow(r, sk.vk().n()).multiply(sk.y()).mod(sk.vk().n());
+		BigInteger u = sk.vk().h().modPow(r, sk.vk().n()).multiply(sk.y()).mod(sk.vk().n()).multiply(sk.w()).mod(sk.vk().n());
+		
+		
+		
 		BigInteger bigU1 = sk.vk().bigF().modPow(bigR, sk.vk().bigP());
 		BigInteger bigU2 = sk.vk().bigG().modPow(bigR.add(sk.x()), sk.vk().bigP());
 		BigInteger bigU3 = sk.vk().bigH().modPow(bigR.add(sk.e()), sk.vk().bigP());
@@ -204,6 +207,23 @@ public class GroupSign {
 		input.add(bigV3.toByteArray());
 		input.add(message);
 		BigInteger c = getHash(input);
+		System.out.println("THE SIGN VALUE IS " + c.toString(16));
+		System.out.println("SIGN u " + u.toString(16));
+		System.out.println("SIGN v " + v.toString(16));
+		System.out.println("SIGN U1 " + bigU1.toString(16));
+		System.out.println("SIGN U2 " + bigU2.toString(16));
+		System.out.println("SIGN U3 " + bigU3.toString(16));
+		System.out.println("SIGN V1 " + bigV1.toString(16));
+		System.out.println("SIGN V2 " + bigV2.toString(16));
+		System.out.println("SIGN V3 " + bigV3.toString(16));
+
+
+
+
+
+
+
+
 		
 		
 		BigInteger zx = rx.add(c.multiply(sk.x()));
@@ -227,7 +247,7 @@ public class GroupSign {
 			return false;
 
 		boolean isValid = false;
-		BigInteger vPart1 = vk.a().modPow(sigma.c().negate(), vk.n());
+		BigInteger vPart1 = vk.a().multiply(vk.w()).modPow(sigma.c().negate(), vk.n());
 		BigInteger vPart2 = vk.g().modPow(sigma.zx().negate(), vk.n());
 		BigInteger vPart3 = vk.h().modPow(sigma.zr(), vk.n());
 		BigInteger vPart4 = sigma.c().multiply(new BigInteger("2").pow(this.lE - 1)).add(sigma.ze());
@@ -260,8 +280,22 @@ public class GroupSign {
 		input.add(bigV3.toByteArray());
 		input.add(message);
 		BigInteger c = getHash(input);
-		System.out.println("calculated hash: " + c.toString(16));
-		System.out.println("signature hash: " + sigma.c().toString(16));
+
+		System.out.println("THE VERIFIED SIGN VALUE IS " + c.toString(16));
+		System.out.println("SIGN u " + sigma.u().toString(16));
+		System.out.println("SIGN v " + v.toString(16));
+		System.out.println("SIGN U1 " + sigma.bigU1().toString(16));
+		System.out.println("SIGN U2 " + sigma.bigU2().toString(16));
+		System.out.println("SIGN U3 " + sigma.bigU3().toString(16));
+		System.out.println("SIGN V1 " + bigV1.toString(16));
+		System.out.println("SIGN V2 " + bigV2.toString(16));
+		System.out.println("SIGN V3 " + bigV3.toString(16));
+		
+		
+		
+		
+		
+		
 		isValid = c.equals(sigma.c());
 
 		return isValid;
@@ -283,10 +317,19 @@ public class GroupSign {
 				repeat = false;
 		}
 		
-		BigInteger wi = this.vk().w().modPow(bigE.negate(), this.vk().n());
-		BigInteger ri = new BigInteger(e.bitLength(), this.rand).mod(e);
-		BigInteger part = this.vk().a().multiply(req.commitment().modPow(ri, this.vk().n()));
-		BigInteger yi = part.modPow(bigE.negate(), this.vk().n());
+		
+
+	
+		BigInteger ri = new BigInteger(e.bitLength()-1, this.prime_certainty, this.rand);
+		BigInteger commitment = req.commitment().multiply(     this.vk().h().modPow(ri, this.vk().n())  );
+		BigInteger part = this.vk().a().multiply(commitment).mod(this.vk().n());
+		
+		BigInteger totient = this.p.subtract(BigInteger.ONE).multiply(this.q.subtract(BigInteger.ONE));
+		BigInteger privat = bigE.modInverse(totient);
+
+		// encrypt res
+		BigInteger yi = part.modPow(privat, this.n);
+		BigInteger wi = this.vk.w().modPow(privat, this.n);
 		
 
 		
@@ -295,11 +338,19 @@ public class GroupSign {
 	
 	public GroupSignMemberKey joinClientInit(){
 		
-		BigInteger xi = new BigInteger(this.lQ, this.rand).mod(this.vk.bigQ());
+		BigInteger xi = randValModP(this.lQ, this.bigQ);
+		
+		
 		BigInteger bigY = this.vk.bigG().modPow(xi, this.vk.bigP());
-		BigInteger ri = randValModP(this.modulus, this.vk.n());
+		
+		BigInteger ri = new BigInteger (this.modulus, this.prime_certainty, this.rand);
+		while(!ri.gcd(this.vk.n()).equals(BigInteger.ONE)){
+			System.out.println("lol");
+				ri = new BigInteger(this.modulus, this.prime_certainty, this.rand);
+			}
 		
 		BigInteger commitment = this.vk.g().modPow(xi, this.vk.n()).multiply(this.vk.h().modPow(ri, this.vk.n())).mod(this.vk.n());
+		
 		
 		return new GroupSignMemberKey(this.vk, null, xi, null, null, ri, null, bigY, commitment);
 		
@@ -396,14 +447,21 @@ public class GroupSign {
 		}
 		return phi;
 	}
-
+	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 
-		GroupSign grpS = new GroupSign();
+		boolean isServer = true;
+		GroupSign grpS = new GroupSign(isServer); 
 		byte[] testmessage = new BigInteger("1990").toByteArray();
-		GroupSignMemberKey sk = grpS.sk(1);
 		GroupSignPublicKey vk = grpS.vk();
+		
+		GroupSignMemberKey sk = grpS.joinClientInit();
+		GroupSignJoinRequest req = new GroupSignJoinRequest(sk.bigY(),sk.commitment());
+		GroupSignJoinResponse resp = grpS.joinToGroupServer(req);
+		sk = grpS.joinClientResponse(resp, sk);
+		
+
 		GroupSignManagerKey gsmk = grpS.gsmk();
 		GroupSignSignature sigma_testmessage = grpS.sign(testmessage, sk);
 
@@ -414,6 +472,7 @@ public class GroupSign {
 			System.out.println("error");
 		}
 
+		
 		byte[] othermessage = new BigInteger("1965").toByteArray();
 		valid = grpS.verify(vk, othermessage, sigma_testmessage);
 		if (valid) {
@@ -425,6 +484,7 @@ public class GroupSign {
 		int member = grpS.open(vk, gsmk, testmessage, sigma_testmessage);
 		System.out.println("The message was signed by member " + member);
 
+		
 	}
 
 }

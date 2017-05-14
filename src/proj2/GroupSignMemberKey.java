@@ -56,6 +56,10 @@ public class GroupSignMemberKey {
 		return r;
 	}
 	
+	public BigInteger w(){
+		return w;
+	}
+	
 	
 	
 
