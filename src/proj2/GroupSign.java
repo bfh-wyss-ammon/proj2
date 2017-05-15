@@ -134,7 +134,7 @@ public class GroupSign {
 		this.vk = new GroupSignPublicKey(this.n, this.a, this.g, this.h, this.bigQ, this.bigP, this.bigF, this.bigG,
 				this.bigH,this.w);
 
-		this.gsmk = new GroupSignManagerKey(this.vk, this.Xg);
+		this.gsmk = new GroupSignManagerKey(this.vk, this.Xg, this.p, this.q);
 		
 
 		return true;
