@@ -1,9 +1,25 @@
-package src.proj2;
+package Project2Crypto.Project2Crypto;
 
 import java.io.Serializable;
 import java.math.BigInteger;
 
 public class GroupSignPublicKey implements Serializable {
+	
+	// this is aka l(n) and l(P)
+	public final static int modulus = 2048;
+
+	public final static int lE = 504;
+	public final static int lQ = 282;
+
+	// length of c
+	public final static int lc = 160;
+
+	// length of e and s
+	public final static int le = 60;
+
+	// sets how many rounds of the miller rabin test are run
+	public final static int prime_certainty = 100;
+	
 	
 	private final BigInteger n;
 	private final BigInteger a;

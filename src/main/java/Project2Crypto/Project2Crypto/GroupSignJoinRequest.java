@@ -1,4 +1,4 @@
-package src.proj2;
+package Project2Crypto.Project2Crypto;
 
 import java.math.BigInteger;
 

@@ -1,4 +1,4 @@
-package src.test;
+package Project2Crypto.Project2Crypto;
 
 import static org.junit.Assert.*;
 
@@ -6,7 +6,8 @@ import java.math.BigInteger;
 
 import org.junit.Before;
 import org.junit.Test;
-import src.proj2.*;
+
+import Project2Crypto.Project2Crypto.Paillier;
 
 public class PaillierTest {
 	

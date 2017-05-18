@@ -1,9 +1,9 @@
-package src.proj2;
+package Project2Crypto.Project2Crypto;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 
-public class GroupSignManagerKey {
+public class GroupSignManagerKey  {
 	
 	private final GroupSignPublicKey vk;
 	private final BigInteger Xg;
